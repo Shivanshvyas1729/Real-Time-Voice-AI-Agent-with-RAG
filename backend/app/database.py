@@ -1,25 +1,36 @@
-import asyncio
 from pymongo import AsyncMongoClient
+from pymongo.asynchronous.database import AsyncDatabase
+from app.config import settings
+from loguru import logger
 
-async def main():
-    uri = "mongodb+srv://shivanshvyas29:shiva@cluster0.ion2nks.mongodb.net"
-    client = AsyncMongoClient(uri)
+client: AsyncMongoClient | None = None
+database: AsyncDatabase | None = None
 
+
+async def connect_to_mongo():
+    global client, database
+    logger.info("Connecting to MongoDB", uri_prefix=settings.MONGO_URI[:30] + "...")
     try:
-        database = client.get_database("sample_mflix")
-        movies = database.get_collection("movies")
-
-        # Query for a movie that has the title 'Back to the Future'
-        query = { "title": "Back to the Future" }
-        movie = await movies.find_one(query)
-
-        print(movie)
-
-        await client.close()
-
+        client = AsyncMongoClient(settings.MONGO_URI)
+        database = client[settings.DB_NAME]
+        await client.admin.command("ping")
+        logger.info("Connected to MongoDB", db=settings.DB_NAME)
     except Exception as e:
-        raise Exception("Unable to find the document due to the following error: ", e)
+        logger.error("Failed to connect to MongoDB", error=str(e))
+        raise
 
-# Run the async function
-asyncio.run(main())
 
+async def close_mongo_connection():
+    global client
+    logger.info("Closing MongoDB connection")
+    if client:
+        await client.close()
+        logger.info("MongoDB connection closed")
+    else:
+        logger.warning("close_mongo_connection called but no active client")
+
+
+def get_database() -> AsyncDatabase:
+    if database is None:
+        logger.warning("get_database called before connect_to_mongo")
+    return database
