@@ -1,26 +1,44 @@
+"""
+Equipment & Document Management Router Module
+
+Provides REST API endpoints for:
+- Equipment entity CRUD operations
+- Multi-file document ingestion, text extraction, batch vector embedding, and MongoDB metadata storage.
+"""
+
 import os
 import tempfile
 import uuid
 from datetime import datetime, timezone
-from typing import List, Optional
+from typing import List, Optional, Annotated
 from fastapi import APIRouter, HTTPException, status, UploadFile, File, Form
 from loguru import logger
 from bson import ObjectId
 from bson.errors import InvalidId
+
 from app.services.text_extraction import TextExtractionService
 from app.services.embeddings import EmbeddingService
-
 from app.database import get_database
 from app.models.equipment import Equipment
 from app.models.document import Document
 from app.config import settings
 
-
 router = APIRouter()
 
 
 def parse_object_id(id_str: str) -> ObjectId:
-    """Safely parse ObjectId string, raising HTTP 400 if invalid"""
+    """
+    Safely parses a hexadecimal string into a MongoDB BSON ObjectId.
+
+    Input:
+        id_str (str): 24-character hexadecimal ObjectId string.
+
+    Output:
+        ObjectId: Parsed BSON ObjectId instance.
+
+    Raises:
+        HTTPException(400): If `id_str` is not a valid 24-char hex ObjectId.
+    """
     try:
         return ObjectId(id_str)
     except (InvalidId, TypeError):
@@ -32,11 +50,21 @@ def parse_object_id(id_str: str) -> ObjectId:
 
 @router.post("/", response_model=Equipment, status_code=status.HTTP_201_CREATED)
 async def create_equipment(equipment: Equipment):
-    
-    """Create a new equipment"""
+    """
+    Creates a new equipment record in MongoDB.
+
+    Input:
+        equipment (Equipment): Pydantic body containing `name`, `description`, `tenant_id`, etc.
+
+    Output:
+        Equipment: Inserted equipment domain model with assigned MongoDB `_id`.
+
+    Raises:
+        HTTPException(409): If an equipment with the same name already exists for the tenant.
+    """
     db = get_database()
     
-    # Check if equipment name already exists
+    # Check if equipment name already exists for this tenant
     existing = await db.equipment.find_one({"name": equipment.name, "tenant_id": equipment.tenant_id})
     if existing:
         raise HTTPException(
@@ -44,22 +72,29 @@ async def create_equipment(equipment: Equipment):
             detail="Equipment with this name already exists"
         )
     
-    # Add timestamps
+    # Assign created_at and updated_at timestamps
     now = datetime.now(timezone.utc)
     equipment_dict = equipment.model_dump(exclude={"id"}, exclude_none=True, by_alias=True)
     equipment_dict["created_at"] = now
     equipment_dict["updated_at"] = now
     
-    # Insert into database
+    # Insert document into MongoDB equipment collection
     result = await db.equipment.insert_one(equipment_dict)
     equipment_dict["_id"] = result.inserted_id
     return Equipment(**equipment_dict)
 
 
-
 @router.get("/", response_model=List[Equipment], status_code=status.HTTP_200_OK)
 async def get_equipment():
-    """Get all equipment"""
+    """
+    Retrieves all equipment items from MongoDB.
+
+    Input:
+        None.
+
+    Output:
+        List[Equipment]: List of all equipment Pydantic models.
+    """
     db = get_database()
     equipment_list = await db.equipment.find({}).to_list(length=None)
     return [Equipment(**item) for item in equipment_list]
@@ -67,7 +102,18 @@ async def get_equipment():
 
 @router.get("/{equipment_id}", response_model=Equipment, status_code=status.HTTP_200_OK)
 async def get_one_equipment(equipment_id: str):
-    """Get an equipment by ID"""
+    """
+    Retrieves a single equipment item by its 24-character hexadecimal ID.
+
+    Input:
+        equipment_id (str): Equipment ObjectId string path parameter.
+
+    Output:
+        Equipment: Target equipment Pydantic domain model.
+
+    Raises:
+        HTTPException(404): If equipment item is not found.
+    """
     db = get_database()
     obj_id = parse_object_id(equipment_id)
     equipment = await db.equipment.find_one({"_id": obj_id})
@@ -79,14 +125,24 @@ async def get_one_equipment(equipment_id: str):
     return Equipment(**equipment)
 
 
-
 def _extract_text_from_file(
     text_extractor: TextExtractionService,
     data: bytes,
     original_name: str,
     content_type: str,
 ) -> Optional[str]:
-    """Extract text from bytes using a temporary file and clean it up afterward."""
+    """
+    Extracts plain text content from uploaded file bytes using a temporary file.
+
+    Input:
+        text_extractor (TextExtractionService): Service instance for parsing PDF/TXT files.
+        data (bytes): Raw uploaded binary file content bytes.
+        original_name (str): Original filename (e.g. "manual.pdf").
+        content_type (str): MIME content type string.
+
+    Output:
+        Optional[str]: Extracted text string, or None if extraction fails.
+    """
     _, ext = os.path.splitext(original_name)
     temp_file_path = None
 
@@ -114,7 +170,15 @@ def _extract_text_from_file(
 
 
 def _serialize_document(doc: dict) -> dict:
-    """Convert MongoDB document fields to JSON-friendly values."""
+    """
+    Converts MongoDB document ObjectIds and datetimes to JSON-serializable string values.
+
+    Input:
+        doc (dict): Raw MongoDB document dictionary.
+
+    Output:
+        dict: JSON-friendly dictionary with string ObjectIds and ISO ISO-8601 datetimes.
+    """
     doc = dict(doc)
 
     for field in ("_id", "equipment_id"):
@@ -129,7 +193,19 @@ def _serialize_document(doc: dict) -> dict:
 
 
 async def _get_equipment(db, equipment_id: str):
-    """Validate equipment and return its ObjectId."""
+    """
+    Validates equipment existence and returns parsed BSON ObjectId.
+
+    Input:
+        db: Active AsyncDatabase handle.
+        equipment_id (str): Equipment ObjectId string.
+
+    Output:
+        ObjectId: Validated MongoDB ObjectId.
+
+    Raises:
+        HTTPException(404): If equipment item does not exist.
+    """
     obj_id = parse_object_id(equipment_id)
 
     if not await db.equipment.find_one({"_id": obj_id}):
@@ -144,15 +220,27 @@ async def _get_equipment(db, equipment_id: str):
 @router.post("/{equipment_id}/documents", status_code=status.HTTP_201_CREATED)
 async def upload_equipment_documents(
     equipment_id: str,
-    files: List[UploadFile] = File(...),
-    description: Optional[str] = Form(None),
+    files: Annotated[List[UploadFile], File()],
+    description: Annotated[Optional[str], Form()] = None,
 ):
+    """
+    Uploads, extracts text, chunks, batch-embeds, and stores document metadata and vector chunks in MongoDB.
+
+    Input:
+        equipment_id (str): Path parameter equipment ObjectId.
+        files (List[UploadFile]): Form-data uploaded multipart files.
+        description (Optional[str]): Optional document description string.
+
+    Output:
+        dict: JSON payload `{"documents": [...], "count": N}` containing created document metadata summaries.
+    """
     db = get_database()
     equipment_obj_id = await _get_equipment(db, equipment_id)
 
     text_extractor = TextExtractionService()
     embedding_service = EmbeddingService()
-    tenant_id = settings.TENANT_ID
+    equipment = await db.equipment.find_one({"_id": equipment_obj_id})
+    tenant_id = equipment.get("tenant_id", settings.TENANT_ID) if equipment else settings.TENANT_ID
     created_docs = []
 
     for file in files:
@@ -220,8 +308,24 @@ async def upload_equipment_documents(
 
             chunk_documents = []
 
-            for index, chunk_text in enumerate(chunks):
+            # Batch process embeddings for high performance (up to 32 chunks per batch)
+            batch_size = 32
+            all_embeddings = []
+            for i in range(0, len(chunks), batch_size):
+                batch_chunks = chunks[i : i + batch_size]
                 try:
+                    batch_embeddings = embedding_service.embed_texts(batch_chunks)
+                    all_embeddings.extend(batch_embeddings)
+                except Exception as e:
+                    logger.error(
+                        "Failed batch embedding",
+                        document_id=str(document_id),
+                        batch_start=i,
+                        error=str(e),
+                    )
+
+            if len(all_embeddings) == len(chunks):
+                for index, (chunk_text, embedding) in enumerate(zip(chunks, all_embeddings)):
                     chunk_documents.append({
                         "document_id": document_id,
                         "equipment_id": equipment_obj_id,
@@ -230,25 +334,15 @@ async def upload_equipment_documents(
                         "chunk_id": str(uuid.uuid4()),
                         "chunk_index": index,
                         "text": chunk_text,
-                        "embedding": embedding_service.embed_text(chunk_text),
+                        "embedding": embedding,
                         "is_disabled": False,
                     })
-
-                    if (index + 1) % 10 == 0 or index == len(chunks) - 1:
-                        logger.debug(
-                            "Chunk embedding progress",
-                            document_id=str(document_id),
-                            chunks_embedded=index + 1,
-                            total_chunks=len(chunks),
-                        )
-
-                except Exception as e:
-                    logger.warning(
-                        "Failed to embed chunk",
-                        document_id=str(document_id),
-                        chunk_index=index,
-                        error=str(e),
-                    )
+            else:
+                logger.warning(
+                    "Mismatch between chunk count and generated embeddings count",
+                    chunks_count=len(chunks),
+                    embeddings_count=len(all_embeddings),
+                )
 
             if not chunk_documents:
                 await db.documents_metadata.update_one(
@@ -286,13 +380,36 @@ async def upload_equipment_documents(
                 f"Error processing file {file.filename}: {e}",
                 exc_info=True,
             )
+            # If document metadata was already created, mark status as failed
+            if "document_id" in locals() and document_id:
+                try:
+                    await db.documents_metadata.update_one(
+                        {"_id": document_id},
+                        {
+                            "$set": {
+                                "embedding_status": "failed",
+                                "error": str(e),
+                                "updated_at": datetime.now(timezone.utc),
+                            }
+                        },
+                    )
+                except Exception as update_err:
+                    logger.error(f"Failed to set document status to failed: {update_err}")
 
     return {"documents": created_docs, "count": len(created_docs)}
 
 
 @router.get("/{equipment_id}/documents", status_code=status.HTTP_200_OK)
 async def list_equipment_documents(equipment_id: str):
-    """List all documents for an equipment."""
+    """
+    Lists all uploaded knowledge documents for a specific equipment item.
+
+    Input:
+        equipment_id (str): Target equipment ObjectId string path parameter.
+
+    Output:
+        dict: JSON payload `{"documents": [...], "count": N}` containing active documents.
+    """
     db = get_database()
     equipment_obj_id = await _get_equipment(db, equipment_id)
 

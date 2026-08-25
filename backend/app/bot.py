@@ -1,15 +1,22 @@
+"""
+Pipecat Voice Bot Pipeline Engine Module
+
+Constructs and executes the real-time AI voice pipeline using Pipecat 1.0 architecture:
+- Deepgram Speech-To-Text (STT)
+- Groq Language Model (LLM) with RAG tool calling (`search_knowledge_base`)
+- ElevenLabs Text-To-Speech (TTS)
+- RTVI Protocol Observer & FastAPI WebSocket Transport
+"""
+
 import os
 from datetime import datetime, timezone
 from typing import Any, Dict
-
 from dotenv import load_dotenv
-from fastapi import WebSocket
 from loguru import logger
+from fastapi import WebSocket
 
-from pipecat.adapters.schemas.function_schema import FunctionSchema
-from pipecat.adapters.schemas.tools_schema import ToolsSchema
-from pipecat.audio.vad.silero import SileroVADAnalyzer
-from pipecat.audio.vad.vad_analyzer import VADParams
+from pipecat.audio.vad.silero import SileroVADAnalyzer, VADParams
+from pipecat.adapters.schemas.tools_schema import FunctionSchema, ToolsSchema
 from pipecat.frames.frames import (
     Frame,
     LLMMessagesAppendFrame,
@@ -45,19 +52,19 @@ from app.services.rag import RAGService
 
 load_dotenv(override=True)
 
-# The two push_frame calls serve entirely different purposes: Push #1 emits a brand new frame, while Push #2 forwards the original frame so the rest of the pipeline doesn't break.
 
-# Push #1 (TranscriptionFrame): Emits a new event
-
-# When an LLMMessagesAppendFrame arrives, the processor extracts the user's text and creates a new TranscriptionFrame. It pushes this new frame downstream so UI components or listeners can render the user's transcribed message in real time.
-
-# Push #2 (frame): Forwards the original frame
-
-# This passes the original incoming frame (LLMMessagesAppendFrame or any other frame) along to the next processor in the pipeline.
-
-# Without Push #2, the processor would swallow (drop) the original LLMMessagesAppendFrame. This would break the pipeline because downstream processors (like the LLM context aggregator) would never receive the user's message.
 class TextCaptureProcessor(FrameProcessor):
-    """Intercepts user messages and emits TranscriptionFrames downstream."""
+    """
+    FrameProcessor that intercepts user LLMMessagesAppendFrame events and emits TranscriptionFrames downstream.
+
+    Input:
+        frame (Frame): Incoming audio/text frame in the pipeline.
+        direction (FrameDirection): Flow direction (downstream/upstream).
+
+    Output:
+        Pushes a new `TranscriptionFrame` downstream if a user message is detected,
+        then forwards the original `frame` unchanged so context aggregators receive it.
+    """
 
     async def process_frame(self, frame: Frame, direction: FrameDirection):
         await super().process_frame(frame, direction)
@@ -77,6 +84,19 @@ class TextCaptureProcessor(FrameProcessor):
 
 
 async def run_bot(transport: BaseTransport, session_data: Dict[str, Any]):
+    """
+    Constructs and runs the full Pipecat pipeline for a voice/text streaming session.
+
+    Input:
+        transport (BaseTransport): Inbound transport instance (FastAPIWebsocketTransport).
+        session_data (Dict[str, Any]): Session context dictionary containing:
+            - `equipment_id` (str): Target equipment ID.
+            - `tenant_id` (str): Multi-tenant isolation ID.
+            - `user_id` (str): User ID.
+
+    Output:
+        Runs `PipelineRunner` until socket disconnects or pipeline finishes.
+    """
     logger.info("Starting voice bot pipeline...")
 
     equipment_id: str = session_data.get("equipment_id", "")
@@ -84,18 +104,28 @@ async def run_bot(transport: BaseTransport, session_data: Dict[str, Any]):
 
     rag_service = RAGService()
 
-    # 1. STT Service Setup
+    # 1. STT Service Setup (Deepgram Live Transcriber)
     live_options = LiveOptions(diarize=True)
     stt = DeepgramSTTService(
         api_key=os.getenv("DEEPGRAM_API_KEY"),
         live_options=live_options,
     )
 
-    # 2. RTVI Processor (Modern Pipecat 1.0 style)
+    # 2. RTVI Processor (Pipecat RTVI Protocol Manager)
     rtvi = RTVIProcessor()
 
-    # 3. Tool Definition & Callback
+    # 3. Tool Definition & Callback for Vector Search
     async def search_knowledge_base(params: FunctionCallParams):
+        """
+        Tool Callback: Invoked by Groq LLM when looking up technical equipment manuals.
+
+        Input:
+            params (FunctionCallParams): Contains `arguments["query"]` search string.
+
+        Output:
+            Executes `rag_service.retrieve()`, invokes `params.result_callback()` with chunks,
+            and emits an `RTVIServerMessageFrame` for UI citations rendering.
+        """
         try:
             query = params.arguments.get("query", "")
             logger.info(f"RAG search: {query!r}")
@@ -146,7 +176,7 @@ async def run_bot(transport: BaseTransport, session_data: Dict[str, Any]):
         required=["query"],
     )
 
-    # 4. LLM Service
+    # 4. LLM Service Setup (Groq OpenAI-Compatible Client)
     llm = GroqLLMService(
         api_key=os.getenv("GROQ_API_KEY"),
         model=settings.GROQ_MODEL,
@@ -158,13 +188,15 @@ async def run_bot(transport: BaseTransport, session_data: Dict[str, Any]):
         cancel_on_interruption=False,
     )
 
-    # 5. System Messages, Universal LLMContext & Universal Aggregator Pair (Pipecat 1.0)
+    # 5. System Prompt, Universal Context & Aggregator Pair
     messages = [
         {
             "role": "system",
             "content": (
-                "You are an AI assistant supporting a human agent. "
-                "Keep responses under 30 words and speech-ready."
+                "You are an AI equipment diagnostic assistant. "
+                "You have access to the tool `search_knowledge_base`. "
+                "ALWAYS call the `search_knowledge_base` tool whenever answering user questions about equipment, manuals, error codes, procedures, or technical specifications. "
+                "Base your answers on the retrieved knowledge base data. Keep responses concise, clear, and under 30 words."
             ),
         },
     ]
@@ -172,13 +204,13 @@ async def run_bot(transport: BaseTransport, session_data: Dict[str, Any]):
     context = LLMContext(messages, tools=ToolsSchema(standard_tools=[search_tool]))
     user_aggregator, assistant_aggregator = LLMContextAggregatorPair(context)
 
-    # 6. TTS Service
+    # 6. TTS Service Setup (ElevenLabs Synthesizer)
     tts = ElevenLabsTTSService(
         api_key=os.getenv("ELEVENLABS_API_KEY", ""),
         voice_id=os.getenv("ELEVENLABS_VOICE_ID", "pNInz6obpgDQGcFmaJgB"),
     )
 
-    # 7. Construct Pipeline
+    # 7. Construct Pipecat Pipeline
     pipeline = Pipeline([
         transport.input(),
         rtvi,
@@ -222,6 +254,17 @@ async def run_bot(transport: BaseTransport, session_data: Dict[str, Any]):
 
 
 async def bot(websocket: WebSocket, session_data: Dict[str, Any]):
+    """
+    WebSocket Bot Handler Entrypoint.
+
+    Input:
+        websocket (WebSocket): Inbound FastAPI WebSocket connection.
+        session_data (Dict[str, Any]): Session context containing equipment_id, tenant_id, user_id.
+
+    Output:
+        Initializes `FastAPIWebsocketTransport` with Silero VAD analyzer and Protobuf serializer,
+        then delegates to `run_bot()`.
+    """
     transport = FastAPIWebsocketTransport(
         websocket=websocket,
         params=FastAPIWebsocketParams(

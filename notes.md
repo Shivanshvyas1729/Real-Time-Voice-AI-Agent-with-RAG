@@ -426,6 +426,57 @@ await db.documents_metadata.update_one(
 )
 ```
 
+### Batch Embedding & Index Ordering (`app/services/embeddings.py`)
+
+When generating embeddings for document chunks during ingestion:
+
+#### 1. Batch Processing Performance
+Instead of sending single HTTP requests per chunk (which causes network latency and MongoDB socket timeouts), chunks are embedded in batches (up to 32 chunks per call):
+```python
+# High-performance batch embedding call:
+embeddings = embedding_service.embed_texts(batch_chunks)
+```
+
+#### 2. Why Sorting by `x.index` is Required (`sorted(response.data, key=lambda x: x.index)`)
+When batch embedding requests are sent to OpenAI/AICredits API providers, the server processes chunks across parallel worker threads. The returned `response.data` list is **not guaranteed** to arrive in sequential order `[0, 1, 2]`.
+
+##### Raw API Response Structure:
+```json
+{
+  "object": "list",
+  "data": [
+    { "object": "embedding", "index": 2, "embedding": [-0.018, 0.042, "... 1024 floats ..."] },
+    { "object": "embedding", "index": 0, "embedding": [0.034, -0.012, "... 1024 floats ..."] },
+    { "object": "embedding", "index": 1, "embedding": [-0.052, 0.091, "... 1024 floats ..."] }
+  ],
+  "model": "baai/bge-m3",
+  "usage": { "prompt_tokens": 184, "total_tokens": 184 }
+}
+```
+
+##### Field-by-Field Breakdown of API Response:
+
+| Field Name | Type | Description |
+| :--- | :--- | :--- |
+| **`object`** | `string` | Always `"list"` for batch embedding endpoints. |
+| **`model`** | `string` | The active embedding model (e.g., `"baai/bge-m3"`). |
+| **`usage.prompt_tokens`** | `integer` | Token count processed across all input text chunks in the batch. |
+| **`usage.total_tokens`** | `integer` | Total billable tokens consumed by this batch request. |
+| **`data`** | `array` | List of embedding objects generated for your input strings. |
+| **`data[i].object`** | `string` | Always `"embedding"`. |
+| **`data[i].index`** | `integer` | **Crucial field**: The 0-based index matching your input array position (e.g. `index: 2` arrived first because of server parallel execution). |
+| **`data[i].embedding`** | `array[float]` | The 1024-dimensional floating-point numerical vector. |
+
+##### Index Alignment:
+If `response.data` were parsed directly without sorting, Chunk #0's text in MongoDB would be assigned Chunk #2's vector, corrupting RAG vector search accuracy.
+
+```python
+# Sort response.data by each item's .index property to restore original chunk alignment [0, 1, 2]:
+sorted_data = sorted(response.data, key=lambda x: x.index)
+embeddings = [item.embedding for item in sorted_data]
+```
+```
+
 ---
 
 ## 5. 🧰 Custom Pydantic Types & MIME Types Guide

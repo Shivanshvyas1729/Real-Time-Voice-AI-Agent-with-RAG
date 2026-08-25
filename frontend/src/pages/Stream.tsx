@@ -11,13 +11,16 @@ const Stream = () => {
   const [client] = useState(() => {
     try {
       const transport = new WebSocketTransport();
-      // enableMic: false means mic is disabled by default, user can enable via toggle
-      return new PipecatClient({ transport, enableMic: false });
+      // Silence unsupported getters in WebSocketTransport
+      Object.defineProperty(transport, 'isCamEnabled', { get: () => false, configurable: true });
+      Object.defineProperty(transport, 'isSharingScreen', { get: () => false, configurable: true });
+      return new PipecatClient({ transport, enableMic: true });
     } catch (error) {
       console.error("Error initializing PipecatClient:", error);
-      // Return a minimal client even if initialization fails partially
       const transport = new WebSocketTransport();
-      return new PipecatClient({ transport, enableMic: false });
+      Object.defineProperty(transport, 'isCamEnabled', { get: () => false, configurable: true });
+      Object.defineProperty(transport, 'isSharingScreen', { get: () => false, configurable: true });
+      return new PipecatClient({ transport, enableMic: true });
     }
   });
 

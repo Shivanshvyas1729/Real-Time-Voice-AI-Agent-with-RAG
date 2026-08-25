@@ -25,12 +25,52 @@ async def lifespan(app: FastAPI):
     await close_mongo_connection()
 
 
+from fastapi.openapi.utils import get_openapi
+
 app = FastAPI(
     title="Industrial MVP API",
     description="MVP version of Industrial voice bot with RAG",
     version="0.1.0",
     lifespan=lifespan,
 )
+
+
+def custom_openapi():
+    if app.openapi_schema:
+        return app.openapi_schema
+    openapi_schema = get_openapi(
+        title=app.title,
+        version=app.version,
+        description=app.description,
+        routes=app.routes,
+    )
+    # Fix Swagger UI file upload widget for FastAPI 0.100+ / OpenAPI 3.1
+    for path_item in openapi_schema.get("paths", {}).values():
+        for method in path_item.values():
+            if isinstance(method, dict) and "requestBody" in method:
+                content_types = method["requestBody"].get("content", {})
+                if "multipart/form-data" in content_types:
+                    schema_or_ref = content_types["multipart/form-data"].get("schema", {})
+                    ref = schema_or_ref.get("$ref")
+                    if ref:
+                        schema_name = ref.split("/")[-1]
+                        schema = openapi_schema.get("components", {}).get("schemas", {}).get(schema_name, {})
+                    else:
+                        schema = schema_or_ref
+
+                    for prop in schema.get("properties", {}).values():
+                        if prop.get("type") == "string" and ("contentMediaType" in prop or "contentSchema" in prop):
+                            prop["format"] = "binary"
+                        elif prop.get("type") == "array" and isinstance(prop.get("items"), dict):
+                            items = prop["items"]
+                            if items.get("type") == "string" and ("contentMediaType" in items or "contentSchema" in items):
+                                items["format"] = "binary"
+
+    app.openapi_schema = openapi_schema
+    return app.openapi_schema
+
+
+app.openapi = custom_openapi
 
 
 allowed_origins_env = os.getenv("ALLOWED_ORIGINS", "")

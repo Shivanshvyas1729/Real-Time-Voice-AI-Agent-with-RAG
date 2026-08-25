@@ -1,0 +1,24 @@
+# Environment & Secrets
+.env
+*.env
+!.env.example
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+ENV/
+*.log
+
+# Node & Frontend
+node_modules/
+dist/
+dist-ssr/
+*.local
+
+# Windows & OS Metadata
+*:Zone.Identifier
+Thumbs.db
+.DS_Store
