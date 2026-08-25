@@ -3,34 +3,40 @@ from pymongo.asynchronous.database import AsyncDatabase
 from app.config import settings
 from loguru import logger
 
+
 client: AsyncMongoClient | None = None
 database: AsyncDatabase | None = None
 
 
 async def connect_to_mongo():
+    """Create database connection"""
     global client, database
-    logger.info("Connecting to MongoDB", uri_prefix=settings.MONGO_URI[:30] + "...")
+    mongo_uri = settings.MONGO_URI or settings.MONGO_URL
     try:
-        client = AsyncMongoClient(settings.MONGO_URI)
+        # PyMongo Async API automatically handles TLS for mongodb+srv:// connections
+        client = AsyncMongoClient(
+            mongo_uri,
+            serverSelectionTimeoutMS=30000,  # 30 seconds timeout
+            connectTimeoutMS=30000,
+            socketTimeoutMS=30000,
+        )
         database = client[settings.DB_NAME]
-        await client.admin.command("ping")
-        logger.info("Connected to MongoDB", db=settings.DB_NAME)
+        # Test connection
+        await client.admin.command('ping')
+        logger.info(f"✅ Connected to MongoDB: {settings.DB_NAME}")
     except Exception as e:
-        logger.error("Failed to connect to MongoDB", error=str(e))
+        logger.error(f"❌ Failed to connect to MongoDB: {str(e)}")
         raise
 
 
 async def close_mongo_connection():
+    """Close database connection"""
     global client
-    logger.info("Closing MongoDB connection")
     if client:
         await client.close()
-        logger.info("MongoDB connection closed")
-    else:
-        logger.warning("close_mongo_connection called but no active client")
+        logger.info("✅ MongoDB connection closed")
 
 
 def get_database() -> AsyncDatabase:
-    if database is None:
-        logger.warning("get_database called before connect_to_mongo")
+    """Get database instance"""
     return database

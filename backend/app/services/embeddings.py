@@ -14,8 +14,8 @@ class EmbeddingService:
             base_url=settings.BASE_URL,
         )
         self.client = OpenAI(
-            api_key=settings.API_KEY,
-            base_url=settings.BASE_URL,
+            api_key=settings.AICREDITS_API_KEY,
+            base_url=settings.AICREDITS_BASE_URL,
         )
         self.model = settings.EMBEDDING_MODEL
 
