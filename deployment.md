@@ -155,7 +155,7 @@ graph TB
     ECS Cluster -->|Pulls Docker Images| ECR_FE
     BackendTask -->|Outbound Internet Access| NAT
     NAT --> IGW
-`
+```
 
 ---
 
@@ -178,13 +178,13 @@ graph TD
 ### Phase 1: Infrastructure & Secrets Setup
 
 1. **Navigate to the infrastructure directory:**
-   `ash
+   ```bash
    cd /home/dell/voice-agent/infrastructure
    chmod +x setup-aws.sh destroy-aws.sh
    `
 
 2. **Run the AWS setup script:**
-   `ash
+   ```bash
    ./setup-aws.sh
    `
 
@@ -203,11 +203,11 @@ graph TD
 
 Build backend and frontend Docker containers for linux/amd64 and push to AWS ECR:
 
-`ash
+```bash
 cd /home/dell/voice-agent/scripts
 chmod +x build-and-push-ecr.sh create-services.sh deploy_aws.sh
 ./build-and-push-ecr.sh
-`
+```
 
 ---
 
@@ -215,14 +215,14 @@ chmod +x build-and-push-ecr.sh create-services.sh deploy_aws.sh
 
 Register Task Definitions and create active Fargate services attached to your Load Balancer:
 
-`ash
+```bash
 # Register Task Definitions
 aws ecs register-task-definition --cli-input-json file://../.github/workflows/task-definition-backend.json --region us-east-1
 aws ecs register-task-definition --cli-input-json file://../.github/workflows/task-definition-frontend.json --region us-east-1
 
 # Create Services
 ./create-services.sh
-`
+```
 
 ---
 
@@ -245,17 +245,17 @@ To enable automated zero-downtime deployment when pushing to GitHub:
 
 To avoid hourly AWS charges when you stop working:
 
-`ash
+```bash
 cd /home/dell/voice-agent/infrastructure
 ./destroy-aws.sh
-`
+```
 
 ---
 
 ## 🔍 Troubleshooting
 
 - **Missing ECS Service-Linked Role Error:**
-  `ash
+  ```bash
   aws iam create-service-linked-role --aws-service-name ecs.amazonaws.com
   `
 - **Browser Microphone Permission Error on ALB URL:**

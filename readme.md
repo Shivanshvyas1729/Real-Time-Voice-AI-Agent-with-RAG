@@ -551,7 +551,7 @@ graph TB
     ECS Cluster -->|Pulls Docker Images| ECR_FE
     BackendTask -->|Outbound Internet Access| NAT
     NAT --> IGW
-`
+```
 
 ### Key Services Used
 
@@ -567,28 +567,28 @@ graph TB
 ### Quick Deployment Commands
 
 1. **Deploy Infrastructure & Secrets:**
-   `ash
+   ```bash
    cd infrastructure
    chmod +x setup-aws.sh destroy-aws.sh
    ./setup-aws.sh
    `
 
 2. **Build & Push Containers to ECR:**
-   `ash
+   ```bash
    cd ../scripts
    chmod +x build-and-push-ecr.sh create-services.sh deploy_aws.sh
    ./build-and-push-ecr.sh
    `
 
 3. **Register Tasks & Launch ECS Services:**
-   `ash
+   ```bash
    aws ecs register-task-definition --cli-input-json file://../.github/workflows/task-definition-backend.json --region us-east-1
    aws ecs register-task-definition --cli-input-json file://../.github/workflows/task-definition-frontend.json --region us-east-1
    ./create-services.sh
    `
 
 4. **Teardown Infrastructure (Stop Charges):**
-   `ash
+   ```bash
    cd ../infrastructure
    ./destroy-aws.sh
    `
