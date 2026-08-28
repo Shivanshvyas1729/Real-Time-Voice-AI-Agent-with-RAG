@@ -1,6 +1,6 @@
 # Complete MongoDB Schema, Pydantic Models & Data Extraction Architecture
 
-This document provides a comprehensive technical reference for the MongoDB database schemas, the Pydantic data models located in [`backend/app/models/`](backend/app/models), and the end-to-end data extraction workflows in the **RAG Voice AI Agent** system.
+This document provides a comprehensive technical reference for the MongoDB database schemas, the Pydantic data models located in [`backend/app/models/`](../backend/app/models), and the end-to-end data extraction workflows in the **RAG Voice AI Agent** system.
 
 ---
 
@@ -27,7 +27,7 @@ This document provides a comprehensive technical reference for the MongoDB datab
 
 ## 1. System Overview & Architecture
 
-The application connects to a MongoDB database named **`live_db`** (configured via [`backend/app/config.py`](backend/app/config.py)).
+The application connects to a MongoDB database named **`live_db`** (configured via [`backend/app/config.py`](../backend/app/config.py)).
 
 - **Database Name**: `live_db`
 - **Driver**: `pymongo.AsyncMongoClient` (PyMongo Async API)
@@ -56,7 +56,7 @@ flowchart LR
         BotServ["Pipecat Voice Bot\n(Deepgram + Groq + ElevenLabs)"]
     end
 
-    subgraph Models ["Pydantic Models (backend/app/models)"]
+    subgraph Models ["Pydantic Models (../backend/app/models)"]
         PEquipment["Equipment (equipment.py)"]
         PDocument["Document (document.py)"]
         PRetrieval["RetrievalResult\nChunkContent\nChunkMetadata\n(rag.py)"]
@@ -267,7 +267,7 @@ erDiagram
 
 ## 3. Pydantic Domain Models
 
-All domain models reside in [`backend/app/models/`](backend/app/models).
+All domain models reside in [`backend/app/models/`](../backend/app/models).
 
 ### 3.1 Numbered Data Flow Pipeline
 
@@ -366,7 +366,7 @@ classDiagram
 ---
 
 ### 3.3 Custom Type: `PyObjectId`
-Defined in both [`equipment.py`](backend/app/models/equipment.py#L22-L29) and [`document.py`](backend/app/models/document.py#L22-L29).
+Defined in both [`equipment.py`](../backend/app/models/equipment.py#L22-L29) and [`document.py`](../backend/app/models/document.py#L22-L29).
 
 * **Purpose**: Bridges MongoDB BSON `ObjectId` with standard Python `str` in Pydantic V2.
 * **Inbound (`BeforeValidator`)**: Converts valid hex string or existing `ObjectId` to `bson.ObjectId`.
@@ -375,7 +375,7 @@ Defined in both [`equipment.py`](backend/app/models/equipment.py#L22-L29) and [`
 ---
 
 ### 3.4 `Equipment` Model
-Located at: [`backend/app/models/equipment.py`](backend/app/models/equipment.py)
+Located at: [`backend/app/models/equipment.py`](../backend/app/models/equipment.py)
 
 ```python
 class Equipment(BaseModel):
@@ -395,7 +395,7 @@ class Equipment(BaseModel):
 ---
 
 ### 3.5 `Document` Model
-Located at: [`backend/app/models/document.py`](backend/app/models/document.py)
+Located at: [`backend/app/models/document.py`](../backend/app/models/document.py)
 
 ```python
 class Document(BaseModel):
@@ -421,14 +421,14 @@ class Document(BaseModel):
 ---
 
 ### 3.6 RAG Models
-Located at: [`backend/app/models/rag.py`](backend/app/models/rag.py)
+Located at: [`backend/app/models/rag.py`](../backend/app/models/rag.py)
 
 | Model Name | Fields | Description & Purpose |
 | :--- | :--- | :--- |
 | **`ChunkContent`** | `text: str`<br>`file_name: Optional[str]`<br>`score: Optional[float]` | **Clean text payload for LLM**: Contains only factual text and relevance score. Strips out internal database IDs to keep prompt tokens clean and prevent LLM confusion. |
 | **`ChunkMetadata`** | `chunk_id: str`<br>`document_id: str`<br>`equipment_id: str`<br>`tenant_id: Optional[str]`<br>`chunk_index: int`<br>`score: float`<br>`file_name: str` | **Detailed telemetry**: Encapsulates complete provenance of each retrieved chunk. Emitted to the frontend UI via RTVI WebSocket messages for live citations. |
 | **`RetrievalMetadata`**| `query: str`<br>`k: int`<br>`chunks_retrieved: int`<br>`equipment_id: Optional[str]`<br>`tenant_id: Optional[str]`<br>`chunks: list[ChunkMetadata]` | **Execution telemetry**: Records the original query string, $k$ value, filters applied, and list of chunk metadata. |
-| **`RetrievalResult`** | `data: list[ChunkContent]`<br>`metadata: RetrievalMetadata` | **Composite response**: Unified return type of [`RAGService.retrieve()`](backend/app/services/rag.py#L81) containing both LLM context and search metrics. |
+| **`RetrievalResult`** | `data: list[ChunkContent]`<br>`metadata: RetrievalMetadata` | **Composite response**: Unified return type of [`RAGService.retrieve()`](../backend/app/services/rag.py#L81) containing both LLM context and search metrics. |
 
 ---
 
@@ -500,17 +500,17 @@ flowchart LR
 
 | MongoDB Collection | MongoDB Field | Type | Mapped Pydantic Model | Pydantic Field | Used By / Target Component |
 | :--- | :--- | :--- | :--- | :--- | :--- |
-| `equipment` | `_id` | `ObjectId` | [`Equipment`](backend/app/models/equipment.py#L36) | `id` (alias `_id`) | REST API clients, WebSocket router session validation |
-| `equipment` | `name` | `string` | [`Equipment`](backend/app/models/equipment.py#L43) | `name` | Duplicate equipment name prevention |
-| `equipment` | `description` | `string` | [`Equipment`](backend/app/models/equipment.py#L44) | `description` | Dashboard UI display |
-| `equipment` | `tenant_id` | `string` | [`Equipment`](backend/app/models/equipment.py#L45) | `tenant_id` | Multi-tenant query isolation |
-| `equipment` | `is_active` | `bool` | [`Equipment`](backend/app/models/equipment.py#L47) | `is_active` | Soft-delete / operational status check |
-| `documents_metadata` | `_id` | `ObjectId` | [`Document`](backend/app/models/document.py#L36) | `id` (alias `_id`) | Foreign key linking chunks to documents |
-| `documents_metadata` | `equipment_id` | `ObjectId` | [`Document`](backend/app/models/document.py#L43) | `equipment_id` | Foreign key linking documents to equipment |
-| `documents_metadata` | `file_name` | `string` | [`Document`](backend/app/models/document.py#L48) | `file_name` | Filename display and chunk attribution |
-| `documents_metadata` | `embedding_status` | `string` | [`Document`](backend/app/models/document.py#L61) | `embedding_status` | Ingestion status (`pending` $\rightarrow$ `completed` / `failed`) |
-| `document_chunks` | `chunk_id` | `string` | [`ChunkMetadata`](backend/app/models/rag.py#L16) | `chunk_id` | Frontend citation card key |
-| `document_chunks` | `text` | `string` | [`ChunkContent`](backend/app/models/rag.py#L8) | `text` | Clean context injected into Groq LLM prompt |
-| `document_chunks` | `file_name` | `string` | [`ChunkContent`](backend/app/models/rag.py#L9) / [`ChunkMetadata`](backend/app/models/rag.py#L22) | `file_name` | Source attribution in LLM & UI citations |
+| `equipment` | `_id` | `ObjectId` | [`Equipment`](../backend/app/models/equipment.py#L36) | `id` (alias `_id`) | REST API clients, WebSocket router session validation |
+| `equipment` | `name` | `string` | [`Equipment`](../backend/app/models/equipment.py#L43) | `name` | Duplicate equipment name prevention |
+| `equipment` | `description` | `string` | [`Equipment`](../backend/app/models/equipment.py#L44) | `description` | Dashboard UI display |
+| `equipment` | `tenant_id` | `string` | [`Equipment`](../backend/app/models/equipment.py#L45) | `tenant_id` | Multi-tenant query isolation |
+| `equipment` | `is_active` | `bool` | [`Equipment`](../backend/app/models/equipment.py#L47) | `is_active` | Soft-delete / operational status check |
+| `documents_metadata` | `_id` | `ObjectId` | [`Document`](../backend/app/models/document.py#L36) | `id` (alias `_id`) | Foreign key linking chunks to documents |
+| `documents_metadata` | `equipment_id` | `ObjectId` | [`Document`](../backend/app/models/document.py#L43) | `equipment_id` | Foreign key linking documents to equipment |
+| `documents_metadata` | `file_name` | `string` | [`Document`](../backend/app/models/document.py#L48) | `file_name` | Filename display and chunk attribution |
+| `documents_metadata` | `embedding_status` | `string` | [`Document`](../backend/app/models/document.py#L61) | `embedding_status` | Ingestion status (`pending` $\rightarrow$ `completed` / `failed`) |
+| `document_chunks` | `chunk_id` | `string` | [`ChunkMetadata`](../backend/app/models/rag.py#L16) | `chunk_id` | Frontend citation card key |
+| `document_chunks` | `text` | `string` | [`ChunkContent`](../backend/app/models/rag.py#L8) | `text` | Clean context injected into Groq LLM prompt |
+| `document_chunks` | `file_name` | `string` | [`ChunkContent`](../backend/app/models/rag.py#L9) / [`ChunkMetadata`](../backend/app/models/rag.py#L22) | `file_name` | Source attribution in LLM & UI citations |
 | `document_chunks` | `embedding` | `Array<double>` | *(Vector Index)* | *(Vector Index)* | MongoDB Atlas `$vectorSearch` similarity matching |
-| `document_chunks` | `$meta: vectorSearchScore` | `float` | [`ChunkContent`](backend/app/models/rag.py#L10) / [`ChunkMetadata`](backend/app/models/rag.py#L21) | `score` | Relevance ranking and confidence scoring |
+| `document_chunks` | `$meta: vectorSearchScore` | `float` | [`ChunkContent`](../backend/app/models/rag.py#L10) / [`ChunkMetadata`](../backend/app/models/rag.py#L21) | `score` | Relevance ranking and confidence scoring |

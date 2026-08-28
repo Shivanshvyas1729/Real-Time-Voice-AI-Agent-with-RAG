@@ -1203,14 +1203,14 @@ The table below maps all key technical documentation files available in the repo
 | **[`deployment.md`](deployment.md)** | Complete AWS production deployment guide covering AWS ECS Fargate, CloudFormation IaC infrastructure, ECR container push scripts, and GitHub Actions CI/CD workflows. |
 | **[`notes.md`](notes.md)** | Comprehensive developer progress notes, technical architectural deep dives, Pipecat framework concepts, and copy-paste code blueprints. |
 | **[`FUTURE_UPDATES.md`](FUTURE_UPDATES.md)** | Project roadmap detailing planned features, upcoming enhancements, multi-agent orchestrations, and future system updates. |
-| **[`docker-compose.yml`](docker-compose.yml)** | Multi-container local Docker environment specification for running Backend and Frontend containers locally. |
+| **[`docker-compose.yml`](../docker-compose.yml)** | Multi-container local Docker environment specification for running Backend and Frontend containers locally. |
 
 
-- [`app/services/rag.py`](backend/app/services/rag.py) — Clean production RAG pipeline implementation.
-- [`app/models/rag.py`](backend/app/models/rag.py) — Pydantic domain models for RAG search.
-- [`app/routers/equipment.py`](backend/app/routers/equipment.py) — Equipment upload endpoints & document ingestion.
-- [`app/database.py`](backend/app/database.py) — Asynchronous MongoDB connection manager.
-- [`app/config.py`](backend/app/config.py) — Environment settings and database configuration.
+- [`app/services/rag.py`](../backend/app/services/rag.py) — Clean production RAG pipeline implementation.
+- [`app/models/rag.py`](../backend/app/models/rag.py) — Pydantic domain models for RAG search.
+- [`app/routers/equipment.py`](../backend/app/routers/equipment.py) — Equipment upload endpoints & document ingestion.
+- [`app/database.py`](../backend/app/database.py) — Asynchronous MongoDB connection manager.
+- [`app/config.py`](../backend/app/config.py) — Environment settings and database configuration.
 
 ### Recommended System Diagramming Tools
 - **Mermaid.js**: Best for diagrams inside README and markdown documentation.
@@ -1235,7 +1235,7 @@ This section provides visual diagrams, code blueprints, and communication channe
 
 ### 1. ?? The 5 Fundamental Concepts of Pipecat
 
-![Pipecat Fundamental Concepts](docs/images/pipecat_fundamental_concepts.png)
+![Pipecat Fundamental Concepts](images/pipecat_fundamental_concepts.png)
 
 ```mermaid
 graph LR
@@ -1255,7 +1255,7 @@ graph LR
 
 ### 2. ?? Frame Processor Data Flow
 
-![Pipecat Frame Processor Flow](docs/images/pipecat_frame_processor.png)
+![Pipecat Frame Processor Flow](images/pipecat_frame_processor.png)
 
 ```mermaid
 graph TD
@@ -1277,7 +1277,7 @@ graph TD
 
 ### 3. ?? Pipeline Processor Chain Definition
 
-![Pipecat Pipeline Code](docs/images/pipecat_pipeline_code.png)
+![Pipecat Pipeline Code](images/pipecat_pipeline_code.png)
 
 ```python
 pipeline = Pipeline([
@@ -1307,7 +1307,7 @@ graph TD
 
 ### 4. ?? Pipeline vs. Pipeline Task Execution Container
 
-![Pipecat Pipeline vs Pipeline Task](docs/images/pipecat_pipeline_vs_task.png)
+![Pipecat Pipeline vs Pipeline Task](images/pipecat_pipeline_vs_task.png)
 
 ```python
 # 1. Pipeline Definition: The ordered chain of processors
@@ -1339,7 +1339,7 @@ graph TD
 
 ### 5. ?? Client <---> Pipeline Task Communication Channels
 
-![Pipecat Client and Pipeline Task Communication Channels](docs/images/pipecat_client_pipeline_task_channels.png)
+![Pipecat Client and Pipeline Task Communication Channels](images/pipecat_client_pipeline_task_channels.png)
 
 ```mermaid
 graph LR

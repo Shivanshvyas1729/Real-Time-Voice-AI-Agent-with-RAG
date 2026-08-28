@@ -511,6 +511,54 @@ return {"ws_url": ws_url}
 
 ---
 
+
+
+## 🧭 Recommended Reading & Study Roadmap ("Watch Order")
+
+If you are reviewing this codebase for technical interviews, architecture audits, or deployment, follow this recommended sequence to understand the system from high-level architecture down to low-level implementation code:
+
+```mermaid
+graph LR
+    Step1["1. System Overview"] --> Step2["2. Interview Prep Guide"]
+    Step2 --> Step3["3. Database & Vector Models"]
+    Step3 --> Step4["4. WebSocket Protocol Flow"]
+    Step4 --> Step5["5. AWS VPC Architecture"]
+    Step5 --> Step6["6. AWS ECS Deployment"]
+    Step6 --> Step7["7. Free-Tier Demo Setup"]
+    Step7 --> Step8["8. Developer Blueprints"]
+    Step8 --> Step9["9. System Roadmap"]
+```
+
+| Order | Document / Guide | Primary Learning Focus | Associated Source Code Files |
+| :---: | :--- | :--- | :--- |
+| **01** | **[`README.md`](readme.md)** | System overview, core voice pipeline flow, Pipecat frame architecture, and turn-taking concepts. | [`backend/app/bot.py`](backend/app/bot.py)<br>[`frontend/src/App.tsx`](frontend/src/App.tsx) |
+| **02** | **[`docs/INTERVIEW_PREPARATION_GUIDE.md`](docs/INTERVIEW_PREPARATION_GUIDE.md)** | Master interview defense guide for Shivansh Vyas: 8 real-life analogies, sub-800ms SLA, and technical Q&As. | [`backend/app/bot.py`](backend/app/bot.py)<br>[`backend/app/services/rag.py`](backend/app/services/rag.py) |
+| **03** | **[`docs/DATABASE_SCHEMA_AND_MODELS.md`](docs/DATABASE_SCHEMA_AND_MODELS.md)** | MongoDB Atlas `$vectorSearch` HNSW indexes, Pydantic v2 models, BSON ObjectIds, and multi-tenant security. | [`backend/app/database.py`](backend/app/database.py)<br>[`backend/app/models/rag.py`](backend/app/models/rag.py)<br>[`backend/app/models/equipment.py`](backend/app/models/equipment.py) |
+| **04** | **[`docs/websocket_flow.md`](docs/websocket_flow.md)** | Web Audio API PCM 16kHz audio capture, RTVI protocol JSON frames, and WebSocket connection lifecycle. | [`backend/app/routers/stream.py`](backend/app/routers/stream.py)<br>[`frontend/src/hooks/pipecat-chat-events.ts`](frontend/src/hooks/pipecat-chat-events.ts) |
+| **05** | **[`docs/AWS_VPC_ARCHITECTURE_EXPLANATION.md`](docs/AWS_VPC_ARCHITECTURE_EXPLANATION.md)** | Enterprise AWS Cloud VPC topology, Public/Private subnets, ALB path routing rules, and NAT Gateway egress. | [`infrastructure/cloudformation.yaml`](infrastructure/cloudformation.yaml)<br>[`infrastructure/setup-aws.sh`](infrastructure/setup-aws.sh) |
+| **06** | **[`docs/deployment.md`](docs/deployment.md)** | Step-by-step production AWS deployment guide: Secrets Manager, Docker ECR builds, Fargate tasks, and CI/CD. | [`scripts/build-and-push-ecr.sh`](scripts/build-and-push-ecr.sh)<br>[`scripts/create-services.sh`](scripts/create-services.sh)<br>[`.github/workflows/deploy.yml`](.github/workflows/deploy.yml) |
+| **07** | **[`docs/FREE_TIER_DEPLOYMENT_GUIDE.md`](docs/FREE_TIER_DEPLOYMENT_GUIDE.md)** | Zero-cost live demo deployment guide: Vercel (Frontend SPA) + Render/Koyeb (FastAPI Backend) + Atlas M0. | [`backend/app/config.py`](backend/app/config.py)<br>[`frontend/src/components/RealTimeChatPanel.tsx`](frontend/src/components/RealTimeChatPanel.tsx) |
+| **08** | **[`docs/notes.md`](docs/notes.md)** | Deep developer specifications, Pipecat frame processor blueprints, and copy-paste code snippets. | [`backend/app/services/text_extraction.py`](backend/app/services/text_extraction.py)<br>[`backend/app/routers/equipment.py`](backend/app/routers/equipment.py) |
+| **09** | **[`docs/FUTURE_UPDATES.md`](docs/FUTURE_UPDATES.md)** | System enhancements roadmap: Multi-Modal Vision RAG, offline edge container deployment, and hybrid search (RRF). | [`backend/app/services/rag.py`](backend/app/services/rag.py) |
+
+---
+## 📁 Project Documentation & Engineering Guides (docs/)
+
+All core architectural specifications, database schemas, deployment guides, developer notes, and interview preparation materials are organized inside the [docs/](docs/) directory:
+
+| Guide / Specification | Description | Direct Link |
+| :--- | :--- | :--- |
+| **Interview Preparation Guide** | Complete technical & HR interview defense guide, 8 real-life analogies, Q&As, and revision sheet by Shivansh Vyas | [docs/INTERVIEW_PREPARATION_GUIDE.md](docs/INTERVIEW_PREPARATION_GUIDE.md) |
+| **Free-Tier Deployment Guide** | Step-by-step 100% free production deployment covering Vercel, Render / Koyeb, and MongoDB Atlas M0 | [docs/FREE_TIER_DEPLOYMENT_GUIDE.md](docs/FREE_TIER_DEPLOYMENT_GUIDE.md) |
+| **AWS Cloud VPC Architecture** | Technical breakdown of production AWS Cloud VPC, Public/Private subnets, ALB ingress, and NAT Gateway egress | [docs/AWS_VPC_ARCHITECTURE_EXPLANATION.md](docs/AWS_VPC_ARCHITECTURE_EXPLANATION.md) |
+| **Database Schema & Vector Models** | MongoDB Atlas schema specs,  indexes, Pydantic v2 domain models, and multi-tenant rules | [docs/DATABASE_SCHEMA_AND_MODELS.md](docs/DATABASE_SCHEMA_AND_MODELS.md) |
+| **AWS ECS Production Deployment** | AWS production deployment guide covering ECS Fargate, CloudFormation IaC, ECR push scripts, and CI/CD | [docs/deployment.md](docs/deployment.md) |
+| **Developer Notes & Specifications** | Comprehensive developer progress notes, Pipecat framework concepts, and copy-paste blueprints | [docs/notes.md](docs/notes.md) |
+| **Future System Roadmap** | Project roadmap detailing multi-modal vision RAG, offline edge deployment, and hybrid BM25 + Vector Search | [docs/FUTURE_UPDATES.md](docs/FUTURE_UPDATES.md) |
+| **WebSocket Protocol Flow** | Handshake lifecycle, binary frame formats, and RTVI protocol events | [docs/websocket_flow.md](docs/websocket_flow.md) |
+
+---
+
 ## ☁️ 7. AWS Production Cloud Infrastructure & Deployment
 
 Developer: **Shivansh Vyas** (Shivanshvyas1729)
