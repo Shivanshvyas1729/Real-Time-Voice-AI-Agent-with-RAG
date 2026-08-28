@@ -123,19 +123,19 @@ Developer: **Shivansh Vyas** (Shivanshvyas1729)
 
 ### 1. AWS Cloud Infrastructure Architecture
 
-`mermaid
+```mermaid
 graph TB
-    subgraph AWS Cloud (Region: us-east-1)
-        subgraph VPC (10.0.0.0/16)
+    subgraph AWSCloud["AWS Cloud (Region: us-east-1)"]
+        subgraph VPC["VPC (10.0.0.0/16)"]
             IGW[Internet Gateway]
             
-            subgraph Public Subnets (Subnet 1 & 2)
+            subgraph PublicSubnets["Public Subnets (Subnet 1 & 2)"]
                 ALB[Application Load Balancer]
                 NAT[NAT Gateway]
             end
             
-            subgraph Private Subnets (Subnet 1 & 2)
-                subgraph ECS Cluster (rag-voice-agent-cluster)
+            subgraph PrivateSubnets["Private Subnets (Subnet 1 & 2)"]
+                subgraph ECSCluster["ECS Cluster (rag-voice-agent-cluster)"]
                     BackendTask[ECS Task: Backend Container - Port 8000]
                     FrontendTask[ECS Task: Frontend Container - Port 80]
                 end
@@ -161,7 +161,7 @@ graph TB
 
 ### 2. End-to-End Deployment Workflow
 
-`mermaid
+```mermaid
 graph TD
     A[Local WSL / Terminal] -->|Run setup-aws.sh| B(AWS CloudFormation)
     B -->|Creates| C[VPC, ALB, ECR, ECS Cluster]
@@ -169,7 +169,7 @@ graph TD
     E[Push to Git main branch] -->|Triggers| F[.github/workflows/deploy.yml]
     F -->|Builds & Pushes Containers| C
     F -->|Updates ECS Tasks| D
-`
+```
 
 ---
 

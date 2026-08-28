@@ -519,19 +519,19 @@ This application is fully automated for production on **AWS Cloud** using **ECS 
 
 ### AWS Cloud Architecture Diagram
 
-`mermaid
+```mermaid
 graph TB
-    subgraph AWS Cloud (Region: us-east-1)
-        subgraph VPC (10.0.0.0/16)
+    subgraph AWSCloud["AWS Cloud (Region: us-east-1)"]
+        subgraph VPC["VPC (10.0.0.0/16)"]
             IGW[Internet Gateway]
             
-            subgraph Public Subnets (Subnet 1 & 2)
+            subgraph PublicSubnets["Public Subnets (Subnet 1 & 2)"]
                 ALB[Application Load Balancer]
                 NAT[NAT Gateway]
             end
             
-            subgraph Private Subnets (Subnet 1 & 2)
-                subgraph ECS Cluster (rag-voice-agent-cluster)
+            subgraph PrivateSubnets["Private Subnets (Subnet 1 & 2)"]
+                subgraph ECSCluster["ECS Cluster (rag-voice-agent-cluster)"]
                     BackendTask[ECS Task: Backend Container - Port 8000]
                     FrontendTask[ECS Task: Frontend Container - Port 80]
                 end
