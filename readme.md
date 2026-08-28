@@ -310,14 +310,11 @@ graph LR
 
 ```mermaid
 graph TD
-    AudioIn[Audio Frames from Client Mic] --> STT[STT Service
-(Deepgram Frame Processor)]
+    AudioIn[Audio Frames from Client Mic] --> STT["STT Service<br/>(Deepgram Frame Processor)"]
     STT --> TextFrames[Text Frames]
-    TextFrames --> LLM[LLM Service
-(Groq / Llama Frame Processor)]
+    TextFrames --> LLM["LLM Service<br/>(Groq / Llama Frame Processor)"]
     LLM --> LLMTextFrames[LLM Text Frames]
-    LLMTextFrames --> TTS[TTS Service
-(ElevenLabs Frame Processor)]
+    LLMTextFrames --> TTS["TTS Service<br/>(ElevenLabs Frame Processor)"]
     TTS --> SpeechOut[Speech / Audio Frames to Client Speaker]
 ```
 
@@ -348,13 +345,13 @@ pipeline = Pipeline([
 
 ```mermaid
 graph TD
-    In[transport.input()] --> RTVI[rtvi]
+    In["transport.input()"] --> RTVI[rtvi]
     RTVI --> STT[stt]
-    STT --> UserCtx[context_aggregator.user()]
+    STT --> UserCtx["context_aggregator.user()"]
     UserCtx --> LLM[llm]
     LLM --> TTS[tts]
-    TTS --> Out[transport.output()]
-    Out --> AssistCtx[context_aggregator.assistant()]
+    TTS --> Out["transport.output()"]
+    Out --> AssistCtx["context_aggregator.assistant()"]
 ```
 
 ---
@@ -374,7 +371,7 @@ task = PipelineTask(
         enable_metrics=True,
         enable_usage_metrics=True,
     ),
-    observers=[RTVIObserver(rtvi)],
+    observers=["RTVIObserver(rtvi)"],
 )
 ```
 
@@ -382,12 +379,11 @@ task = PipelineTask(
 graph TD
     subgraph PipelineTask["PipelineTask (Active Runtime Task)"]
         subgraph Pipeline["Pipeline (Sequential Processor List)"]
-            P1[transport.input()] --> P2[STT / LLM / TTS] --> P3[transport.output()]
+            P1["transport.input()"] --> P2[STT / LLM / TTS] --> P3["transport.output()"]
         end
         Params["PipelineParams
 (enable_metrics=True, enable_usage_metrics=True)"]
-        Observers["Observers
-([RTVIObserver(rtvi)])"]
+        Observers["Observers<br/>(["RTVIObserver(rtvi)"])"]
     end
 ```
 

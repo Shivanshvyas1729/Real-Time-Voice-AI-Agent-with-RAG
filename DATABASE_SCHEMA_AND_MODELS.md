@@ -277,7 +277,7 @@ flowchart LR
         M1["(1) Equipment Model\n(equipment.py)\nValidates Equipment & Tenant"] --> DB1[("db.equipment")]
         M2["(2) Document Model\n(document.py)\nTracks Upload Status & Metadata"] --> DB2[("db.documents_metadata")]
         DB1 -.->|"equipment_id"| M2
-        M2 --> DB3[("db.document_chunks\n768-dim Vector Embeddings")]
+        M2 --> DB3[("db.document_chunks<br/>768-dim Vector Embeddings")]
     end
 
     subgraph QueryFlow ["Phase 2: RAG Retrieval & LLM Voice Synthesis"]
