@@ -1,12 +1,17 @@
-# Environment & Secrets
+# Environment & Secrets (NEVER commit secrets!)
 .env
 *.env
+.env.*
 !.env.example
 
 # Python
 __pycache__/
 *.py[cod]
-*$py.class
+*.class
+*.so
+.pytest_cache/
+.coverage
+htmlcov/
 .venv/
 venv/
 ENV/
@@ -16,9 +21,18 @@ ENV/
 node_modules/
 dist/
 dist-ssr/
+.cache/
+.vite/
 *.local
 
-# Windows & OS Metadata
+# Docker & Temporary Archives
+*.tar
+*.zip
+*.gz
+
+# IDE & OS Metadata
+.vscode/
+.idea/
 *:Zone.Identifier
 Thumbs.db
 .DS_Store

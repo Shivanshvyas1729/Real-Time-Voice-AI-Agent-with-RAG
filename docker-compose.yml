@@ -1,0 +1,169 @@
+
+# Define all application services
+services:
+
+  # Backend service (Python/FastAPI application)
+  backend:
+    # Build the backend Docker image
+    build:
+      # Path to the backend project directory
+      context: ./backend
+
+      # Dockerfile used to build the backend image
+      dockerfile: Dockerfile
+
+    # Custom name for the backend container
+    container_name: rag-voice-agent-backend
+
+    # Automatically restart unless explicitly stopped
+    restart: unless-stopped
+
+    # Map host port 8000 to container port 8000
+    ports:
+      - "8000:8000"
+
+    # Keep a TTY session available for interactive debugging
+    tty: true
+
+    # Keep standard input open
+    stdin_open: true
+
+    # Load environment variables from the backend .env file
+    env_file:
+      - ./backend/.env
+
+    # Define additional environment variables
+    environment:
+      # Show Python logs immediately without buffering
+      - PYTHONUNBUFFERED=1
+
+    # Mount volumes for development
+    volumes:
+      # Mount local backend source code into /app inside the container
+      # This allows code changes to be reflected without rebuilding
+      - ./backend:/app
+
+      # Preserve the virtual environment inside the container
+      # Prevents the local machine's .venv from overwriting it
+      - /app/.venv
+
+    # Command used to start the FastAPI application
+    command:
+      [
+        "uv",
+        "run",
+        "uvicorn",
+        "main:app",
+        "--host",
+        "0.0.0.0",
+        "--port",
+        "8000",
+
+        # Automatically reload the server when source code changes
+        "--reload",
+
+        # Watch the /app directory for file changes
+        "--reload-dir",
+        "/app",
+
+        # Trust proxy headers (useful when behind a reverse proxy)
+        "--proxy-headers",
+
+        # Allow forwarded headers from all IP addresses
+        "--forwarded-allow-ips",
+        "*"
+      ]
+
+    # Connect the backend to the custom Docker network
+    networks:
+      - rag-voice-agent-network
+
+    # Health check to verify that the backend is running correctly
+    healthcheck:
+      # Send a request to the /health endpoint
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://localhost:8000/health').read()"
+        ]
+
+      # Run the health check every 30 seconds
+      interval: 30s
+
+      # Mark the check as failed if it takes longer than 10 seconds
+      timeout: 10s
+
+      # Retry the health check 3 times before marking the container unhealthy
+      retries: 3
+
+      # Give the application 40 seconds to start before health checks begin
+      start_period: 120s
+
+
+  # Frontend service (typically a React/Vite application served by Nginx)
+  frontend:
+    # Build the frontend Docker image
+    build:
+      # Path to the frontend project directory
+      context: ./frontend
+
+      # Dockerfile used to build the frontend image
+      dockerfile: Dockerfile
+
+      # Build-time environment variables
+      args:
+        # API base URL used by the frontend application
+        VITE_API_BASE_URL: http://localhost:8000/api/v1
+
+        # Pipecat streaming endpoint used for voice communication
+        VITE_PIPECAT_ENDPOINT: /stream/connect
+
+    # Custom name for the frontend container
+    container_name: rag-voice-agent-frontend
+
+    # Automatically restart unless explicitly stopped
+    restart: unless-stopped
+
+    # Map host port 3000 to container port 80
+    ports:
+      - "3000:80"
+
+    # Start the frontend only after the backend becomes healthy
+    depends_on:
+      backend:
+        condition: service_healthy
+
+    # Connect the frontend to the same Docker network
+    networks:
+      - rag-voice-agent-network
+
+
+# Define custom Docker networks
+networks:
+
+  # Shared network used for communication between frontend and backend
+  rag-voice-agent-network:
+
+    # Use Docker's default bridge networking driver
+    driver: bridge
+
+
+### In simple terms
+
+# This `docker-compose.yml` runs **two containers**:
+
+# ```text
+# Frontend
+# Port: localhost:3000
+#       │
+#       ▼
+# Backend API
+# Port: localhost:8000
+#       │
+#       ▼
+# Your Python / FastAPI application
+# ```
+
+# The custom Docker network allows the **frontend and backend containers to communicate with each other**, while the health check ensures the frontend waits until the backend is healthy before starting.

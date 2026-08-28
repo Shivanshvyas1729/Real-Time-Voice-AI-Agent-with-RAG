@@ -1481,3 +1481,166 @@ return {"ws_url": ws_url}
 | `ws_scheme = "wss" if forwarded_proto == "https" else "ws"` | **Determines Secure vs Insecure WebSocket**: If public traffic is `https`, generates encrypted `wss://` (WebSocket Secure / TLS). If public traffic is `http`, generates `ws://`. |
 | `ws_url = f"{ws_scheme}://{forwarded_host}/api/v1/stream/ws/{payload.equipment_id}"` | **Constructs Full Dynamic WS Endpoint**: Dynamically builds the exact WebSocket URL tied to the validated `equipment_id`. |
 | `return {"ws_url": ws_url}` | **Delivers Handshake Payload**: Returns the connection URL to the frontend so the client can immediately open the WebSocket stream. |
+
+---
+
+# 🐳 Complete End-to-End Docker Compose Guide
+
+## 1. What is Docker Compose & Why Use It?
+
+### The Problem: Manual `docker run`
+When building modern applications with multiple components (e.g., FastAPI backend, React frontend, MongoDB/PostgreSQL, Redis), starting containers individually requires long, tedious commands:
+```bash
+# Starting Backend manually
+docker run -d --name backend -p 8000:8000 --env-file ./backend/.env -v ./backend:/app my-backend-image
+
+# Starting Frontend manually
+docker run -d --name frontend -p 3000:80 my-frontend-image
+```
+
+Doing this manually every time is error-prone and hard to maintain.
+
+### The Solution: Docker Compose
+**Docker Compose** is an orchestration tool that allows you to define, configure, and run multi-container applications using a single YAML configuration file (`docker-compose.yml`).
+
+With Docker Compose, your entire application stack starts with **one single command**:
+```bash
+docker compose up --build
+```
+
+---
+
+## 2. Anatomy & Core Concepts of `docker-compose.yml`
+
+Every standard `docker-compose.yml` file consists of 3 primary top-level sections:
+
+```yaml
+services:  # 1. Defines all application containers/microservices
+  backend: ...
+  frontend: ...
+
+volumes:   # 2. Defines persistent data stores (DB data, caches)
+  db_data: ...
+
+networks:  # 3. Defines virtual networks connecting services
+  app_network: ...
+```
+
+---
+
+### Detailed Key Breakdown
+
+| Key | Purpose | Example / Details |
+| :--- | :--- | :--- |
+| **`build`** | Builds a Docker image from a local `Dockerfile`. | `context: ./backend`, `dockerfile: Dockerfile` |
+| **`image`** | Downloads a prebuilt image from Docker Hub instead of building locally. | `image: mongo:latest` or `image: redis:alpine` |
+| **`container_name`** | Assigns a custom human-readable container name instead of a random auto-generated string. | `container_name: rag-voice-agent-backend` |
+| **`ports`** | Maps host machine ports to internal container ports (HOST:CONTAINER format). | `- '8000:8000'` (Access at `http://localhost:8000`) |
+| **`env_file`** | Loads environment variables from an external file. | `- ./backend/.env` |
+| **`environment`** | Directly sets environment variables inside the container. | `- PYTHONUNBUFFERED=1` |
+| **`volumes`** | Syncs local folders into the container (Bind Mounts) OR saves data permanently (Named Volumes). | `- ./backend:/app` (Live code reloading) |
+| **`depends_on`** | Defines startup sequence dependencies between services. | Frontend waits until Backend is healthy before launching. |
+| **`healthcheck`** | Periodically checks if an app inside the container is responsive. | Tests `http://localhost:8000/health` every 30s. |
+| **`restart`** | Container auto-restart policy. | `unless-stopped`, `always`, or `on-failure`. |
+| **`networks`** | Connects containers to a shared DNS-enabled virtual network. | Allows Frontend to reach Backend using container name. |
+
+---
+
+## 3. How Networking & Communication Work
+
+In Docker Compose, containers connected to the same custom network can talk to each other **by using their service name as the domain name**.
+
+```text
+┌────────────────────────────────────────────────────────┐
+│               Host Machine (Your Computer)              │
+│  Frontend Browser Port: 3000   │  Backend Port: 8000  │
+└───────────────────────────┬────────────────────────────┘
+                            │
+┌───────────────────────────▼────────────────────────────┐
+│          Docker Network (rag-voice-agent-network)      │
+│                                                        │
+│   ┌─────────────────────┐    HTTP / WS    ┌──────────┐ │
+│   │  frontend container │ ──────────────► │ backend  │ │
+│   └─────────────────────┘   (DNS lookup)  └──────────┘ │
+└────────────────────────────────────────────────────────┘
+```
+
+- Inside the Docker network, the frontend communicates with the backend via `http://backend:8000` (not `localhost`).
+- From your host machine's browser, you access them via `http://localhost:3000` and `http://localhost:8000`.
+
+---
+
+## 4. Complete Command Reference Cheat Sheet
+
+### Lifecycle Commands
+
+| Action | Command | Explanation |
+| :--- | :--- | :--- |
+| **Build & Start** | `docker compose up --build` | Rebuilds Dockerfiles if changed and starts all containers in foreground. |
+| **Start in Background** | `docker compose up -d` | Runs containers in detached (background) mode. |
+| **Stop Services** | `docker compose down` | Stops and removes containers, networks, and default volumes. |
+| **Stop & Delete Volumes** | `docker compose down -v` | Destroys containers AND named data volumes (cleans database state). |
+| **Start / Stop without rebuild** | `docker compose start` / `docker compose stop` | Pauses/resumes containers without destroying them. |
+
+---
+
+### Inspection & Debugging Commands
+
+| Action | Command | Explanation |
+| :--- | :--- | :--- |
+| **View Live Logs** | `docker compose logs -f` | Streams real-time stdout/stderr logs from all services. |
+| **View Service Logs** | `docker compose logs -f backend` | Streams logs for a specific service (`backend`). |
+| **List Running Containers** | `docker compose ps` | Shows running containers, status, and port mappings. |
+| **Execute Command in Container** | `docker compose exec backend bash` | Opens an interactive bash terminal session inside a running container. |
+| **Check Process Top** | `docker compose top` | Displays running processes inside each container. |
+
+---
+
+## 5. Universal Best Practices & Rules Across ALL Projects
+
+1. **Do I need to recreate `docker-compose.yml` every time?**
+   - **No.** You write it once per project repository. Git tracks it, and developers pull and run `docker compose up`.
+2. **Never Commit Secrets (`.env` files)**:
+   - Always keep .env in .gitignore. Commit .env.example as a template for team members.
+3. **Bind Mounts vs Volumes**:
+   - **Bind Mounts** (`./backend:/app`): Use during development so changes on your host machine instantly reload inside the container.
+   - **Named Volumes** (`db_data:/var/lib/postgresql/data`): Use for databases so data persists even when containers are deleted.
+4. **Port Conflicts**:
+   - If port 8000 is already in use by another app on your machine, change the **Host** port in docker-compose.yml:
+     `- '8081:8000'` (maps machine port 8081 to container port 8000).
+---
+
+## 🔌 Port Mappings & Container Communication Guide
+
+### 1. Port Mapping Formula
+Docker uses the formula: `HOST_PORT:CONTAINER_PORT`
+- **HOST_PORT** - Left: Port on your computer accessed in the browser - `localhost`.
+- **CONTAINER_PORT** - Right: Port inside the Docker container where the app listens.
+
+| Service | Port Mapping | Access URL in Browser | Purpose |
+| :--- | :--- | :--- | :--- |
+| **Frontend** | `3000:80` | `http://localhost:3000` | React / Vite UI web page |
+| **Backend API** | `8000:8000` | `http://localhost:8000/docs` | FastAPI Swagger API Documentation |
+| **Backend Health**| `8000:8000` | `http://localhost:8000/health` | Backend health status endpoint |
+
+---
+
+### 2. How Containers & Browser Communicate
+
+#### A. Internal Docker Network - Container to Container
+- Both containers connect via `rag-voice-agent-network`.
+- Docker built-in DNS allows containers to talk using service names:
+  - Frontend reaches Backend internally at `http://backend:8000`.
+
+#### B. Browser to Backend Flow
+1. **HTTP REST Handshake**: Frontend - `localhost:3000` requests WebSocket connection parameters from Backend - `http://localhost:8000/api/v1/stream/connect`.
+2. **Real Time WebSocket Stream**: Browser connects directly to `ws://localhost:8000/api/v1/stream/ws/id` to stream bidirectional microphone audio and AI response audio in real time.
+
+---
+
+### 🛠️ Key Troubleshooting Commands
+
+| Issue | Solution / Command |
+| :--- | :--- |
+| **Host .venv conflict / Unhealthy Backend** | Run `docker compose down -v` to wipe cached anonymous volumes, then `docker compose up`. |
+| **Code changes not updating** | Ensure bind mounts - `./backend:/app` are configured in `docker-compose.yml`. |

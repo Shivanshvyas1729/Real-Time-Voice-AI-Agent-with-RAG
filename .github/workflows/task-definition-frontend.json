@@ -1,0 +1,30 @@
+{
+    "family": "rag-voice-agent-frontend-td",
+    "networkMode": "awsvpc",
+    "requiresCompatibilities": [
+        "FARGATE"
+    ],
+    "cpu": "256",
+    "memory": "512",
+    "executionRoleArn": "arn:aws:iam::117591992815:role/rag-voice-agent-execution-role",
+    "containerDefinitions": [
+        {
+            "name": "rag-voice-agent-frontend-container",
+            "image": "117591992815.dkr.ecr.us-east-1.amazonaws.com/rag-voice-agent-frontend:latest",
+            "portMappings": [
+                {
+                    "containerPort": 80,
+                    "protocol": "tcp"
+                }
+            ],
+            "logConfiguration": {
+                "logDriver": "awslogs",
+                "options": {
+                    "awslogs-group": "/ecs/rag-voice-agent-frontend",
+                    "awslogs-region": "us-east-1",
+                    "awslogs-stream-prefix": "ecs"
+                }
+            }
+        }
+    ]
+}

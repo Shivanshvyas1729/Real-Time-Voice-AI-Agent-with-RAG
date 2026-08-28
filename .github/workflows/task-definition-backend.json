@@ -1,0 +1,69 @@
+{
+  "family": "rag-voice-agent-backend-td",
+  "networkMode": "awsvpc",
+  "requiresCompatibilities": [
+    "FARGATE"
+  ],
+  "cpu": "512",
+  "memory": "1024",
+  "executionRoleArn": "arn:aws:iam::117591992815:role/rag-voice-agent-execution-role",
+  "taskRoleArn": "arn:aws:iam::117591992815:role/rag-voice-agent-task-role",
+  "containerDefinitions": [
+    {
+      "name": "rag-voice-agent-backend-container",
+      "image": "117591992815.dkr.ecr.us-east-1.amazonaws.com/rag-voice-agent-backend:latest",
+      "portMappings": [
+        {
+          "containerPort": 8000,
+          "protocol": "tcp"
+        }
+      ],
+      "environment": [
+        {
+          "name": "DB_NAME",
+          "value": "rag_voice_agent_db"
+        }
+      ],
+      "secrets": [
+        {
+          "name": "MONGO_URL",
+          "valueFrom": "arn:aws:secretsmanager:us-east-1:117591992815:secret:rag-voice-agent-secrets:MONGO_URL::"
+        },
+        {
+          "name": "DEEPGRAM_API_KEY",
+          "valueFrom": "arn:aws:secretsmanager:us-east-1:117591992815:secret:rag-voice-agent-secrets:DEEPGRAM_API_KEY::"
+        },
+        {
+          "name": "GROQ_API_KEY",
+          "valueFrom": "arn:aws:secretsmanager:us-east-1:117591992815:secret:rag-voice-agent-secrets:GROQ_API_KEY::"
+        },
+        {
+          "name": "AICREDITS_API_KEY",
+          "valueFrom": "arn:aws:secretsmanager:us-east-1:117591992815:secret:rag-voice-agent-secrets:AICREDITS_API_KEY::"
+        },
+        {
+          "name": "ELEVENLABS_API_KEY",
+          "valueFrom": "arn:aws:secretsmanager:us-east-1:117591992815:secret:rag-voice-agent-secrets:ELEVENLABS_API_KEY::"
+        }
+      ],
+      "logConfiguration": {
+        "logDriver": "awslogs",
+        "options": {
+          "awslogs-group": "/ecs/rag-voice-agent-backend",
+          "awslogs-region": "us-east-1",
+          "awslogs-stream-prefix": "ecs"
+        }
+      },
+      "healthCheck": {
+        "command": [
+          "CMD-SHELL",
+          "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8000/health').read()\""
+        ],
+        "interval": 30,
+        "timeout": 5,
+        "retries": 3,
+        "startPeriod": 40
+      }
+    }
+  ]
+}
