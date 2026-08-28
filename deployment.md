@@ -4,7 +4,7 @@ This guide details
 
 ## AWS Cloud Infrastructure Architecture
 
-\\mermaid
+`mermaid
 graph TB
     subgraph AWS Cloud (Region: us-east-1)
         subgraph VPC (10.0.0.0/16)
@@ -36,13 +36,13 @@ graph TB
     ECS Cluster -->|Pulls Docker Images| ECR_FE
     BackendTask -->|Outbound Internet Access| NAT
     NAT --> IGW
-\
+`
 
 ## Detailed AWS VPC & Infrastructure Architecture Explanation
 
 This diagram matches the exact network architecture deployed by your \cloudformation.yaml\ template:
 
-\\mermaid
+`mermaid
 graph LR
     User([Users / Internet]) --> IGW[Internet Gateway]
     
@@ -66,7 +66,7 @@ graph LR
     ECS_FE -->|Outbound API Calls| NAT
     NAT --> IGW
     IGW --> ExternalAPIs([External APIs: MongoDB, Groq, Deepgram, AICredits])
-\
+`
 ### Step-by-Step Breakdown of Each Component
 
 1. **VPC (Virtual Private Cloud)**:
@@ -94,7 +94,7 @@ graph LR
 
 ## Deployment Workflow Architecture
 
-\\mermaid
+`mermaid
 graph TD
     A[Local WSL / Terminal] -->|Run setup-aws.sh| B(AWS CloudFormation)
     B -->|Creates| C[VPC, ALB, ECR, ECS Cluster]
@@ -102,7 +102,7 @@ graph TD
     E[Push to Git main branch] -->|Triggers| F[.github/workflows/deploy.yml]
     F -->|Builds & Pushes Containers| C
     F -->|Updates ECS Tasks| D
-\
+`
  how to deploy the **rag_voice_ai_agent** application, starting from local development to a full AWS production deployment using ECS Fargate and CloudFormation.
 
 ## Table of Contents
@@ -325,3 +325,4 @@ Your application should now be live at the **ALBDNSName** URL you noted in Step 
 - **WebSocket Connection Fails**: Ensure `FORCE_SECURE_WEBSOCKET` is configured correctly if using HTTPS, or check ALB idle timeout settings (should be 600s).
 - **MongoDB Connection Error**: Verify `ca-certificates` are installed in the Docker image and IP whitelist includes the AWS NAT Gateway IPs.
 - **Deployment Stuck**: Check ECS Service Events in the AWS Console for error messages (e.g., "exec format error" indicates wrong platform build).
+
