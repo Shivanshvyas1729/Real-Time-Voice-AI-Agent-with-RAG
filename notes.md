@@ -1315,7 +1315,7 @@ graph TD
             P1["transport.input()"] --> P2[STT / LLM / TTS] --> P3["transport.output()"]
         end
         Params["PipelineParams<br/>(enable_metrics=True, enable_usage_metrics=True)"]
-        Observers["Observers<br/>(["RTVIObserver(rtvi)"])"]
+        Observers["Observers<br/>RTVIObserver(rtvi)"]
     end
 ```
 

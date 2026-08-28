@@ -466,7 +466,7 @@ flowchart LR
 
 ```mermaid
 flowchart LR
-    UserVoice(["1. User speaks into Microphone"]) --> StreamWS["2. WebSocket /api/v1/stream/ws/{equipment_id}\n(routers/stream.py)"]
+    UserVoice["1. User speaks into Microphone"] --> StreamWS["2. WebSocket /api/v1/stream/ws/{equipment_id}\n(routers/stream.py)"]
     StreamWS --> STT["3. Deepgram STT (Real-time Speech-to-Text)"]
     STT --> LLMCheck{"4. Groq LLM Evaluates Query\nNeeds knowledge base?"}
     
