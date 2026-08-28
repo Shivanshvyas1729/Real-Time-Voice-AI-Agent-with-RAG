@@ -247,16 +247,16 @@ Here are the specific, direct documentation and repository links categorized by 
 
 | Component in `bot.py` | Direct Documentation / Code Link |
 | :--- | :--- |
-| **Pipeline & Frame Processors** | [Pipecat Core Concepts: Pipelines & Processors](https://docs.pipecat.ai/guides/core-concepts) |
-| **Custom Processors (`FrameProcessor`)** | [Building Custom Processors Guide](https://docs.pipecat.ai/guides/custom-processors) |
+| **Pipeline & Frame Processors** | [Pipecat Core Concepts: Pipelines & Processors](https://docs.pipecat.ai/pipecat/learn/pipeline) |
+| **Custom Processors (`FrameProcessor`)** | [Building Custom Processors Guide](https://docs.pipecat.ai/pipecat/fundamentals/custom-frame-processor) |
 | **Frames Reference (`pipecat.frames`)** | [Pipecat Frames Source Code & Reference](https://github.com/pipecat-ai/pipecat/blob/main/src/pipecat/frames/frames.py) |
-| **LLM Function Calling & Tools** | [Pipecat Function Calling / Tools Guide](https://docs.pipecat.ai/guides/features/function-calling) |
-| **VAD & Smart Turn Detection** | [Turn Detection & Silero VAD Guide](https://docs.pipecat.ai/guides/features/turn-detection) |
-| **RTVI Client Protocol** | [RTVI Setup & Protocol Specification](https://docs.pipecat.ai/guides/features/rtvi) |
-| **Deepgram STT Integration** | [Deepgram STT Service Documentation](https://docs.pipecat.ai/services/stt/deepgram) |
-| **Groq LLM Integration** | [Groq LLM Service Documentation](https://docs.pipecat.ai/services/llm/groq) |
-| **ElevenLabs TTS Integration** | [ElevenLabs TTS Service Documentation](https://docs.pipecat.ai/services/tts/elevenlabs) |
-| **FastAPI WebSocket Transport** | [FastAPI WebSocket Transport Reference](https://docs.pipecat.ai/transports/websocket) |
+| **LLM Function Calling & Tools** | [Pipecat Function Calling / Tools Guide](https://docs.pipecat.ai/pipecat/learn/function-calling) |
+| **VAD & Smart Turn Detection** | [Turn Detection & Silero VAD Guide](https://docs.pipecat.ai/pipecat/learn/speech-input) |
+| **RTVI Client Protocol** | [RTVI Setup & Protocol Specification](https://docs.pipecat.ai/client/rtvi-standard) |
+| **Deepgram STT Integration** | [Deepgram STT Service Documentation](https://docs.pipecat.ai/pipecat/learn/speech-to-text) |
+| **Groq LLM Integration** | [Groq LLM Service Documentation](https://docs.pipecat.ai/pipecat/learn/llm) |
+| **ElevenLabs TTS Integration** | [ElevenLabs TTS Service Documentation](https://docs.pipecat.ai/pipecat/learn/text-to-speech) |
+| **FastAPI WebSocket Transport** | [FastAPI WebSocket Transport Reference](https://docs.pipecat.ai/pipecat/learn/transports) |
 
 ---
 
@@ -264,11 +264,11 @@ Here are the specific, direct documentation and repository links categorized by 
 
 | Future Feature | Direct Link |
 | :--- | :--- |
-| **User Interruption & Audio Cancellation** | [Handling User Interruptions & Barge-in](https://docs.pipecat.ai/guides/features/interruptions) |
-| **Latency Metrics & Observability (TTFB)** | [Pipeline Metrics and Usage Tracking](https://docs.pipecat.ai/guides/features/metrics) |
+| **User Interruption & Audio Cancellation** | [Handling User Interruptions & Barge-in](https://docs.pipecat.ai/pipecat/fundamentals/interruptions) |
+| **Latency Metrics & Observability (TTFB)** | [Pipeline Metrics and Usage Tracking](https://docs.pipecat.ai/pipecat/fundamentals/metrics) |
 | **Audio Recording (`WaveFileRecorder`)** | [Audio Recording Processors](https://github.com/pipecat-ai/pipecat/blob/main/src/pipecat/processors/audio/audio_buffer_processor.py) |
-| **Telephony Integration (Twilio / SIP)** | [Telephony & WebRTC Transports](https://docs.pipecat.ai/transports/telephony) |
-| **Noise Suppression Filters (RNNoise / Krisp)** | [Audio Filters & Noise Reduction](https://docs.pipecat.ai/transports/audio-filters) |
+| **Telephony Integration (Twilio / SIP)** | [Telephony & WebRTC Transports](https://docs.pipecat.ai/pipecat/telephony/overview) |
+| **Noise Suppression Filters (RNNoise / Krisp)** | [Audio Filters & Noise Reduction](https://docs.pipecat.ai/pipecat/features/krisp-viva) |
 | **Official Working Examples** | [Pipecat GitHub Examples Directory](https://github.com/pipecat-ai/pipecat/tree/main/examples) |
 | **RTVI Frontend Client Library (JS/React)** | [RTVI Client JavaScript/TypeScript Repo](https://github.com/rtvi-ai/rtvi-client-js) |
 
@@ -381,8 +381,7 @@ graph TD
         subgraph Pipeline["Pipeline (Sequential Processor List)"]
             P1["transport.input()"] --> P2[STT / LLM / TTS] --> P3["transport.output()"]
         end
-        Params["PipelineParams
-(enable_metrics=True, enable_usage_metrics=True)"]
+        Params["PipelineParams<br/>(enable_metrics=True, enable_usage_metrics=True)"]
         Observers["Observers<br/>(["RTVIObserver(rtvi)"])"]
     end
 ```
@@ -396,22 +395,18 @@ graph TD
 ```mermaid
 graph LR
     subgraph ClientBox["Client (Browser / Native Client)"]
-        Client[Client Application]
+        Client["Client Application"]
     end
 
     subgraph ServerBox["Pipeline Task Container"]
         subgraph GreenBox["Pipeline Task"]
-            Def["Pipeline_definition
-(Audio Processing Chain)"]
-            Observer["RTVI Observer
-(Telemetry & Control Events)"]
+            Def["Pipeline Definition<br/>(Audio Processing Chain)"]
+            Observer["RTVI Observer<br/>(Telemetry & Control Events)"]
         end
     end
 
-    Client <===>|Audio Channel
-(Inbound Mic PCM / Outbound Speaker Audio)| Def
-    Client <===>|Data Channel
-(RTVI Protocol Events, Actions & Telemetry)| Observer
+    Client <===>|"Audio Channel<br/>(Inbound Mic PCM / Outbound Speaker Audio)"| Def
+    Client <===>|"Data Channel<br/>(RTVI Protocol Events, Actions & Telemetry)"| Observer
 ```
 
 * **Audio Channel**: Handles full-duplex bi-directional audio streaming (PCM input from microphone <-> synthesized audio output to speakers).

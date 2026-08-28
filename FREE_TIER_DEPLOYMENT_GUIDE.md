@@ -1,45 +1,70 @@
 # ?? Free-Tier Production Deployment Guide
 
-This guide provides step-by-step instructions to deploy the **Real-Time Voice AI Agent & RAG System** using 100% **FREE** hosting platforms (**Vercel**, **Render**, **Koyeb**, and **MongoDB Atlas**).
+This guide provides a comprehensive, step-by-step walkthrough to deploy the **Real-Time Voice AI Agent & RAG System** using 100% **FREE** cloud hosting services (**Vercel**, **Render**, **Koyeb**, and **MongoDB Atlas**).
 
 ---
 
-## ??? Architecture Overview
+## ?? Architecture & System Flow
 
 ```mermaid
 graph LR
-    subgraph ClientBrowser["User Browser"]
-        ReactUI["Vite + React UI\n(Hosted on Vercel)"]
+    subgraph ClientBrowser["User Browser / Client"]
+        ReactUI["Vite + React UI<br/>(Hosted on Vercel - Free)"]
     end
 
-    subgraph BackendCloud["Free Cloud Backend"]
-        FastAPI["FastAPI Voice & RAG Service\n(Hosted on Render / Koyeb)"]
+    subgraph BackendCloud["Free Cloud Backend Service"]
+        FastAPI["FastAPI Voice & RAG Service<br/>(Hosted on Render / Koyeb - Free)"]
     end
 
     subgraph DBCloud["Free Cloud Database"]
-        Mongo["MongoDB Atlas\n(M0 Free Cluster + Vector Search)"]
+        Mongo["MongoDB Atlas M0<br/>Vector Search Cluster"]
     end
 
-    ReactUI -->|1. HTTPS / WSS API Requests| FastAPI
-    FastAPI -->|2. Vector Search Queries| Mongo
-    FastAPI -->|3. Streaming Audio APIs| ExternalAPIs["Deepgram STT / Groq LLM / ElevenLabs TTS"]
+    ReactUI -->|"1. HTTPS / WSS Streaming API Requests"| FastAPI
+    FastAPI -->|"2. Vector Search Queries"| Mongo
+    FastAPI -->|"3. Streaming Audio APIs"| ExternalAPIs["Deepgram STT / Groq LLM / ElevenLabs TTS"]
 ```
 
 ---
 
-## ? Step 1: Database Setup (MongoDB Atlas Free M0)
+## ?? Required API Keys & Environment Variables Matrix
 
-1. Sign up / log in to [MongoDB Atlas](https://www.mongodb.com/cloud/atlas).
-2. Create a **FREE M0 Shared Cluster** (Select AWS us-east-1 or closest region).
-3. **Database Access**: Create a Database User with read/write permissions (e.g. `voice_user` + password).
-4. **Network Access**: Add IP Access List entry `0.0.0.0/0` (Allows access from Vercel & Render).
-5. **Connection String**: Copy your connection string:
-   ```text
-   mongodb+srv://voice_user:<password>@cluster0.mongodb.net/?retryWrites=true&w=majority
-   ```
-6. **Create Vector Search Index**:
-   * Navigate to database `voice_agent` $\rightarrow$ collection `document_chunks`.
-   * Create Vector Search Index named `vector_index` with definition:
+Before deploying, ensure you have gathered your API keys from each provider. Refer to `deployment.md` for secret specifications.
+
+| Variable Name | Required By | Description / Example Value | Where to Get |
+| :--- | :--- | :--- | :--- |
+| `MONGO_URL` | Backend | Connection string: `mongodb+srv://user:pass@cluster.mongodb.net/` | [MongoDB Atlas](https://www.mongodb.com/cloud/atlas) |
+| `DB_NAME` | Backend | Database name: `voice_agent` | MongoDB Atlas |
+| `DEEPGRAM_API_KEY` | Backend | Speech-to-Text (STT) transcription key | [Deepgram Console](https://console.deepgram.com/) |
+| `GROQ_API_KEY` | Backend | Ultra-fast Llama 3 LLM inference key | [Groq Console](https://console.groq.com/) |
+| `AICREDITS_API_KEY` | Backend | BAAI/BGE-M3 vector embeddings key | AI Credits Provider |
+| `ELEVENLABS_API_KEY` | Backend | Text-to-Speech (TTS) voice generation key | [ElevenLabs Console](https://elevenlabs.io/) |
+| `VITE_API_BASE_URL` | Frontend | Backend production HTTP/HTTPS URL (e.g., `https://voice-agent-backend.onrender.com`) | Render / Koyeb Dashboard |
+
+---
+
+## ??? Step-by-Step Deployment Instructions
+
+### Phase 1: Free Database Setup (MongoDB Atlas M0 Cluster)
+
+1. **Sign Up / Log In**: Go to [MongoDB Atlas](https://www.mongodb.com/cloud/atlas).
+2. **Create M0 Cluster**:
+   * Select **M0 Free** tier (512MB storage).
+   * Choose AWS Region closest to your users (e.g. `us-east-1`).
+3. **Database Security Access**:
+   * Navigate to **Security -> Database Access**: Create a new database user (e.g. `voice_user` with a strong password).
+   * Navigate to **Security -> Network Access**: Click **Add IP Address** -> Select **Allow Access from Anywhere (`0.0.0.0/0`)** so Render and Vercel instances can connect.
+4. **Copy Connection String**:
+   * Click **Database -> Connect -> Drivers**.
+   * Copy the connection URI:
+     ```text
+     mongodb+srv://voice_user:<your-password>@cluster0.abcde.mongodb.net/?retryWrites=true&w=majority
+     ```
+5. **Create Atlas Vector Search Index**:
+   * Go to **Database -> Cluster -> Atlas Search / Vector Search**.
+   * Click **Create Vector Search Index**.
+   * Select **JSON Editor**, target database `voice_agent`, collection `document_chunks`, and index name `vector_index`.
+   * Paste the configuration JSON:
      ```json
      {
        "fields": [
@@ -60,78 +85,76 @@ graph LR
        ]
      }
      ```
+   * Click **Create Vector Index**.
 
 ---
 
-## ?? Step 2: Backend Deployment (Render or Koyeb Free Tier)
+### Phase 2: Free Backend Deployment (Render or Koyeb)
 
-### Option A: Render (Free Web Service)
+#### Method A: Render (Free Web Service)
 
 1. Sign up / log in to [Render.com](https://render.com/).
-2. Click **New +** $\rightarrow$ **Web Service**.
+2. Click **New + -> Web Service**.
 3. Connect your GitHub repository `Shivanshvyas1729/Real-Time-Voice-AI-Agent-with-RAG`.
-4. Configure settings:
+4. Configure Web Service settings:
    * **Name**: `voice-agent-backend`
-   * **Region**: Oregon (US West) or Frankfurt (EU)
    * **Root Directory**: `backend`
-   * **Runtime**: `Python 3` (or `Docker`)
+   * **Environment**: `Python 3` (or `Docker`)
    * **Build Command**: `pip install -r requirements.txt`
    * **Start Command**: `uvicorn main:app --host 0.0.0.0 --port $PORT`
    * **Instance Type**: **Free**
 5. Add **Environment Variables**:
-   * `MONGO_URL` = `mongodb+srv://voice_user:<password>@cluster0.mongodb.net/...`
+   * `MONGO_URL` = `mongodb+srv://voice_user:<password>@cluster0.abcde.mongodb.net/?retryWrites=true&w=majority`
    * `DB_NAME` = `voice_agent`
-   * `DEEPGRAM_API_KEY` = `your_deepgram_key`
-   * `GROQ_API_KEY` = `your_groq_key`
-   * `AICREDITS_API_KEY` = `your_aicredits_key`
-   * `ELEVENLABS_API_KEY` = `your_elevenlabs_key`
-6. Click **Create Web Service**. Render will deploy your backend and provide a public URL (e.g. `https://voice-agent-backend.onrender.com`).
+   * `DEEPGRAM_API_KEY` = `your_deepgram_api_key`
+   * `GROQ_API_KEY` = `your_groq_api_key`
+   * `AICREDITS_API_KEY` = `your_aicredits_api_key`
+   * `ELEVENLABS_API_KEY` = `your_elevenlabs_api_key`
+6. Click **Create Web Service**. Once deployed, copy your backend URL (e.g., `https://voice-agent-backend.onrender.com`).
 
----
-
-### Option B: Koyeb (Free Docker Deployment)
+#### Method B: Koyeb (Free Docker Deployment)
 
 1. Sign up / log in to [Koyeb.com](https://www.koyeb.com/).
-2. Click **Create App** $\rightarrow$ Select **GitHub**.
+2. Click **Create App -> Select GitHub**.
 3. Choose repository `Shivanshvyas1729/Real-Time-Voice-AI-Agent-with-RAG`.
-4. Set **Workdir**: `backend`
-5. Select **Builder**: `Dockerfile` (Koyeb automatically uses `backend/Dockerfile`).
-6. Add Environment Variables (same as Render).
-7. Deploy. Koyeb provides a native WebSocket-capable free URL (e.g. `https://voice-agent-backend.koyeb.app`).
+4. Set **Workdir** to `backend`.
+5. Select Builder: **Dockerfile** (Koyeb auto-detects `backend/Dockerfile`).
+6. Add Environment Variables (`MONGO_URL`, `DB_NAME`, API keys).
+7. Deploy. Copy your Koyeb public URL (e.g., `https://voice-agent-backend.koyeb.app`).
 
 ---
 
-## ?? Step 3: Frontend Deployment (Vercel Free Tier)
+### Phase 3: Free Frontend Deployment (Vercel)
 
 1. Sign up / log in to [Vercel](https://vercel.com/).
-2. Click **Add New...** $\rightarrow$ **Project**.
+2. Click **Add New... -> Project**.
 3. Import your GitHub repository `Shivanshvyas1729/Real-Time-Voice-AI-Agent-with-RAG`.
-4. In Project Settings:
+4. Configure Project:
    * **Framework Preset**: `Vite`
-   * **Root Directory**: Click Edit $\rightarrow$ Select `frontend`.
-5. Expand **Environment Variables**:
-   * Add `VITE_API_BASE_URL` = `https://voice-agent-backend.onrender.com` (replace with your actual Render/Koyeb backend URL).
+   * **Root Directory**: Click Edit -> Select `frontend`.
+5. Add Environment Variable:
+   * **Name**: `VITE_API_BASE_URL`
+   * **Value**: `https://voice-agent-backend.onrender.com` *(Replace with your Render/Koyeb URL)*
 6. Click **Deploy**.
-7. Vercel will build and launch your application frontend at a free HTTPS URL (e.g. `https://real-time-voice-ai-agent.vercel.app`).
+7. Vercel provisions a production CDN deployment at a URL like `https://real-time-voice-ai-agent.vercel.app`.
 
 ---
 
-## ? Step 4: Verification & Testing
+## ?? Troubleshooting & Free-Tier Gotchas
 
-1. Open your Vercel URL in Chrome or Edge (`https://your-app.vercel.app`).
-2. Upload equipment documentation (PDF/Docx) to test ingestion and vector index embedding creation.
-3. Start a Real-Time Voice session to test full-duplex WebSockets, STT transcription, LLM RAG response generation, and TTS audio playback.
+1. **Render Free Tier Cold Starts**:
+   * Render free services sleep after 15 minutes of inactivity. The first request after a sleep period may take 30-50 seconds to boot up.
+2. **WebSocket WSS Protocol Match**:
+   * When deployed on Vercel (`https://...`), browser security policies require WebSockets to use `wss://` (secure WebSockets). The dynamic URL resolver in `backend/app/routers/stream.py` automatically converts `https` to `wss`.
+3. **CORS Headers**:
+   * If your frontend gets CORS errors, ensure `backend/main.py` has `allow_origins=["*"]` or includes your Vercel domain in allowed origins.
 
 ---
 
-## ?? Summary of Free Resources Used
+## ?? Summary Matrix
 
-| Component | Host / Provider | Free Tier Allowance |
-| :--- | :--- | :--- |
-| **Frontend** | Vercel | Unlimited static sites, global CDN, HTTPS |
-| **Backend** | Render / Koyeb | 512MB RAM free web service, WebSockets support |
-| **Database & Vector Search** | MongoDB Atlas | 512MB free M0 cluster + Atlas Vector Search |
-| **Speech-to-Text** | Deepgram | $200 free credit |
-| **LLM Inference** | Groq | 30 requests/min free tier (Llama 3) |
-| **Text-to-Speech** | ElevenLabs | 10,000 characters/month free |
-
+| Service | Component | Free Allowance | URL Example |
+| :--- | :--- | :--- | :--- |
+| **Vercel** | Frontend UI | Unlimited static deployments & CDN | `https://real-time-voice-ai.vercel.app` |
+| **Render / Koyeb** | FastAPI Backend | 512MB RAM free instance with WebSockets | `https://voice-agent-backend.onrender.com` |
+| **MongoDB Atlas** | Database & Vector Search | 512MB M0 Free Cluster | `mongodb+srv://cluster.mongodb.net` |

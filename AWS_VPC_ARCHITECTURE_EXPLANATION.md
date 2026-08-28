@@ -22,12 +22,12 @@ graph LR
         end
     end
 
-    Users(("Users (Internet)")) -->|1. Inbound HTTP/HTTPS/WebSocket| IGW
+    Users(("Users (Internet)")) -->|"1. Inbound HTTP/HTTPS/WebSocket"| IGW
     IGW -->|2. Forward Ingress| ALB
-    ALB -->|3a. Route /api/v1/*| ECS_BE
-    ALB -->|3b. Route /*| ECS_FE
+    ALB -->|"3a. Route /api/v1/*"| ECS_BE
+    ALB -->|"3b. Route /*"| ECS_FE
     
-    ECS_BE -->|4a. Outbound API Calls (Deepgram, Groq, MongoDB)| NAT
+    ECS_BE -->|"4a. Outbound API Calls (Deepgram, Groq, MongoDB)"| NAT
     ECS_FE -->|4b. Outbound Requests| NAT
     NAT -->|5. Forward Egress| IGW
     IGW -->|6. External AI Services & Databases| External(("External Internet & Cloud Services"))

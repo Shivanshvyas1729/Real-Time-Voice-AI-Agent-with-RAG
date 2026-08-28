@@ -1314,8 +1314,7 @@ graph TD
         subgraph Pipeline["Pipeline (Sequential Processor List)"]
             P1["transport.input()"] --> P2[STT / LLM / TTS] --> P3["transport.output()"]
         end
-        Params["PipelineParams
-(enable_metrics=True, enable_usage_metrics=True)"]
+        Params["PipelineParams<br/>(enable_metrics=True, enable_usage_metrics=True)"]
         Observers["Observers<br/>(["RTVIObserver(rtvi)"])"]
     end
 ```
@@ -1329,22 +1328,18 @@ graph TD
 ```mermaid
 graph LR
     subgraph ClientBox["Client (Browser / Native Client)"]
-        Client[Client Application]
+        Client["Client Application"]
     end
 
     subgraph ServerBox["Pipeline Task Container"]
         subgraph GreenBox["Pipeline Task"]
-            Def["Pipeline_definition
-(Audio Processing Chain)"]
-            Observer["RTVI Observer
-(Telemetry & Control Events)"]
+            Def["Pipeline Definition<br/>(Audio Processing Chain)"]
+            Observer["RTVI Observer<br/>(Telemetry & Control Events)"]
         end
     end
 
-    Client <===>|Audio Channel
-(Inbound Mic PCM / Outbound Speaker Audio)| Def
-    Client <===>|Data Channel
-(RTVI Protocol Events, Actions & Telemetry)| Observer
+    Client <===>|"Audio Channel<br/>(Inbound Mic PCM / Outbound Speaker Audio)"| Def
+    Client <===>|"Data Channel<br/>(RTVI Protocol Events, Actions & Telemetry)"| Observer
 ```
 
 * **Audio Channel**: Handles full-duplex bi-directional audio streaming (PCM input from microphone <-> synthesized audio output to speakers).
