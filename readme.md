@@ -1,5 +1,6 @@
-# 🎙️ Voice AI Agent Architecture & Engineering Guide
 
+# 🎙️ Voice AI Agent Architecture & Engineering Guide
+wsl-> https://github.com/Shivanshvyas1729/pydantic_notes/blob/main/wsl.md
 [![Pipecat](https://img.shields.io/badge/Pipeline-Pipecat_AI-orange?style=for-the-badge&logo=python&logoColor=white)](https://pipecat.ai/)
 [![WebRTC](https://img.shields.io/badge/Transport-WebRTC_Realtime-333333?style=for-the-badge&logo=webrtc&logoColor=white)](https://webrtc.org/)
 [![STT/TTS](https://img.shields.io/badge/Audio-Streaming_Frames-blueviolet?style=for-the-badge)](https://github.com/pipecat-ai/pipecat)
@@ -10,7 +11,6 @@
 ---
 
 ## 📌 Table of Contents
-wsl-> https://github.com/Shivanshvyas1729/pydantic_notes/blob/main/wsl.md
 
 1. [🎙️ 1. The Basic Flow of a Voice AI Agent](#1-the-basic-flow-of-a-voice-ai-agent)
    - [Core Pipeline Flow](#core-pipeline-flow)
@@ -274,6 +274,157 @@ Here are the specific, direct documentation and repository links categorized by 
 
 ---
 
+
+
+---
+
+## ?? Pipecat Architecture, Diagrams & Fundamental Concepts Deep Dive
+
+This section provides visual diagrams, code blueprints, and communication channel breakdowns for Pipecat's real-time voice orchestration engine based on fundamental core concepts.
+
+---
+
+### 1. ?? The 5 Fundamental Concepts of Pipecat
+
+![Pipecat Fundamental Concepts](docs/images/pipecat_fundamental_concepts.png)
+
+```mermaid
+graph LR
+    A[1. Frames] --> B[2. Pipeline]
+    B --> C[3. Pipeline Task]
+    C --> D[4. Transport]
+    D --> E[5. Runner]
+```
+
+* **1. Frames**: The fundamental data units (Audio, Text, Control Signals, Metrics) flowing asynchronously through the system.
+* **2. Pipeline**: An ordered list of frame processors through which frames flow sequentially.
+* **3. Pipeline Task**: The runtime execution container binding the pipeline with execution parameters (`PipelineParams`) and observers (`RTVIObserver`).
+* **4. Transport**: The network abstraction layer (e.g. WebSockets, WebRTC) handling audio I/O, VAD (Voice Activity Detection), and turn detection.
+* **5. Runner**: The main entry point function initiating the transport and running the bot event loop via `run_bot(transport, runner_args)`.
+
+---
+
+### 2. ?? Frame Processor Data Flow
+
+![Pipecat Frame Processor Flow](docs/images/pipecat_frame_processor.png)
+
+```mermaid
+graph TD
+    AudioIn[Audio Frames from Client Mic] --> STT[STT Service
+(Deepgram Frame Processor)]
+    STT --> TextFrames[Text Frames]
+    TextFrames --> LLM[LLM Service
+(Groq / Llama Frame Processor)]
+    LLM --> LLMTextFrames[LLM Text Frames]
+    LLMTextFrames --> TTS[TTS Service
+(ElevenLabs Frame Processor)]
+    TTS --> SpeechOut[Speech / Audio Frames to Client Speaker]
+```
+
+**Key Stages**:
+1. **Audio Frames -> STT Service**: Ingests raw audio chunks from client microphone and streams text transcripts.
+2. **Text Frames -> LLM Service**: Transcripts are injected into prompt context to stream LLM token responses.
+3. **LLM Text Frames -> TTS Service**: Token stream is synthesized into high-fidelity audio chunks.
+4. **Speech Output**: Synthesized audio frames flow to the transport output to play through client speakers.
+
+---
+
+### 3. ?? Pipeline Processor Chain Definition
+
+![Pipecat Pipeline Code](docs/images/pipecat_pipeline_code.png)
+
+```python
+pipeline = Pipeline([
+    transport.input(),              # 1. Transport User Input (Microphone Audio)
+    rtvi,                          # 2. RTVI Protocol Processor
+    stt,                           # 3. Speech-to-Text Transcription (Deepgram)
+    context_aggregator.user(),     # 4. Ingest User Transcript into Context
+    llm,                           # 5. LLM Inference & Streaming (Groq)
+    tts,                           # 6. Text-to-Speech Synthesis (ElevenLabs)
+    transport.output(),            # 7. Transport Bot Output (Speaker Audio)
+    context_aggregator.assistant() # 8. Ingest Assistant Spoken Response into Context
+])
+```
+
+```mermaid
+graph TD
+    In[transport.input()] --> RTVI[rtvi]
+    RTVI --> STT[stt]
+    STT --> UserCtx[context_aggregator.user()]
+    UserCtx --> LLM[llm]
+    LLM --> TTS[tts]
+    TTS --> Out[transport.output()]
+    Out --> AssistCtx[context_aggregator.assistant()]
+```
+
+---
+
+### 4. ?? Pipeline vs. Pipeline Task Execution Container
+
+![Pipecat Pipeline vs Pipeline Task](docs/images/pipecat_pipeline_vs_task.png)
+
+```python
+# 1. Pipeline Definition: The ordered chain of processors
+pipeline = Pipeline([ ... ])
+
+# 2. PipelineTask: The active execution wrapper
+task = PipelineTask(
+    pipeline,
+    params=PipelineParams(
+        enable_metrics=True,
+        enable_usage_metrics=True,
+    ),
+    observers=[RTVIObserver(rtvi)],
+)
+```
+
+```mermaid
+graph TD
+    subgraph PipelineTask["PipelineTask (Active Runtime Task)"]
+        subgraph Pipeline["Pipeline (Sequential Processor List)"]
+            P1[transport.input()] --> P2[STT / LLM / TTS] --> P3[transport.output()]
+        end
+        Params["PipelineParams
+(enable_metrics=True, enable_usage_metrics=True)"]
+        Observers["Observers
+([RTVIObserver(rtvi)])"]
+    end
+```
+
+---
+
+### 5. ?? Client <---> Pipeline Task Communication Channels
+
+![Pipecat Client and Pipeline Task Communication Channels](docs/images/pipecat_client_pipeline_task_channels.png)
+
+```mermaid
+graph LR
+    subgraph ClientBox["Client (Browser / Native Client)"]
+        Client[Client Application]
+    end
+
+    subgraph ServerBox["Pipeline Task Container"]
+        subgraph GreenBox["Pipeline Task"]
+            Def["Pipeline_definition
+(Audio Processing Chain)"]
+            Observer["RTVI Observer
+(Telemetry & Control Events)"]
+        end
+    end
+
+    Client <===>|Audio Channel
+(Inbound Mic PCM / Outbound Speaker Audio)| Def
+    Client <===>|Data Channel
+(RTVI Protocol Events, Actions & Telemetry)| Observer
+```
+
+* **Audio Channel**: Handles full-duplex bi-directional audio streaming (PCM input from microphone <-> synthesized audio output to speakers).
+* **Data Channel**: Transmits real-time control signals, barge-in interruptions, volume metrics, custom action dispatches, and client state updates via RTVI protocol.
+
+
+
+---
+
 ## 🌐 WebSocket, Load Balancers & Dynamic URL Resolution Explained
 
 ### 1. What is WebSocket?
@@ -365,3 +516,88 @@ return {"ws_url": ws_url}
 | `ws_scheme = "wss" if forwarded_proto == "https" else "ws"` | **Determines Secure vs Insecure WebSocket**: If public traffic is `https`, generates encrypted `wss://` (WebSocket Secure / TLS). If public traffic is `http`, generates `ws://`. |
 | `ws_url = f"{ws_scheme}://{forwarded_host}/api/v1/stream/ws/{payload.equipment_id}"` | **Constructs Full Dynamic WS Endpoint**: Dynamically builds the exact WebSocket URL tied to the validated `equipment_id`. |
 | `return {"ws_url": ws_url}` | **Delivers Handshake Payload**: Returns the connection URL to the frontend so the client can immediately open the WebSocket stream. |
+
+
+---
+
+## ☁️ 7. AWS Production Cloud Infrastructure & Deployment
+
+Developer: **Shivansh Vyas** (Shivanshvyas1729)
+
+This application is fully automated for production on **AWS Cloud** using **ECS Fargate**, **Application Load Balancer (ALB)**, **Secrets Manager**, and **CloudFormation (IaC)**.
+
+### AWS Cloud Architecture Diagram
+
+`mermaid
+graph TB
+    subgraph AWS Cloud (Region: us-east-1)
+        subgraph VPC (10.0.0.0/16)
+            IGW[Internet Gateway]
+            
+            subgraph Public Subnets (Subnet 1 & 2)
+                ALB[Application Load Balancer]
+                NAT[NAT Gateway]
+            end
+            
+            subgraph Private Subnets (Subnet 1 & 2)
+                subgraph ECS Cluster (rag-voice-agent-cluster)
+                    BackendTask[ECS Task: Backend Container - Port 8000]
+                    FrontendTask[ECS Task: Frontend Container - Port 80]
+                end
+            end
+        end
+        
+        Secrets[AWS Secrets Manager: rag-voice-agent-secrets]
+        ECR_BE[ECR Repository: rag-voice-agent-backend]
+        ECR_FE[ECR Repository: rag-voice-agent-frontend]
+    end
+
+    Users([Internet Users]) -->|HTTP/HTTPS Traffic| ALB
+    ALB -->|Routes /api/v1/*| BackendTask
+    ALB -->|Routes /*| FrontendTask
+    BackendTask -->|Retrieves Secrets| Secrets
+    ECS Cluster -->|Pulls Docker Images| ECR_BE
+    ECS Cluster -->|Pulls Docker Images| ECR_FE
+    BackendTask -->|Outbound Internet Access| NAT
+    NAT --> IGW
+`
+
+### Key Services Used
+
+| Service | Purpose |
+| :--- | :--- |
+| **AWS CloudFormation** | Infrastructure-as-Code (IaC) provisioning VPC, ALB, ECR, ECS Cluster |
+| **AWS ECS Fargate** | Serverless container orchestration for Backend & Frontend |
+| **AWS Secrets Manager** | Secure storage for API keys (MONGO_URL, DEEPGRAM_API_KEY, GROQ_API_KEY, AICREDITS_API_KEY, ELEVENLABS_API_KEY) |
+| **AWS Application Load Balancer (ALB)** | Public HTTP/WebSocket traffic routing & SSL termination |
+| **Amazon ECR** | Docker container image registry |
+| **GitHub Actions** | Automated CI/CD pipeline (.github/workflows/deploy.yml) |
+
+### Quick Deployment Commands
+
+1. **Deploy Infrastructure & Secrets:**
+   `ash
+   cd infrastructure
+   chmod +x setup-aws.sh destroy-aws.sh
+   ./setup-aws.sh
+   `
+
+2. **Build & Push Containers to ECR:**
+   `ash
+   cd ../scripts
+   chmod +x build-and-push-ecr.sh create-services.sh deploy_aws.sh
+   ./build-and-push-ecr.sh
+   `
+
+3. **Register Tasks & Launch ECS Services:**
+   `ash
+   aws ecs register-task-definition --cli-input-json file://../.github/workflows/task-definition-backend.json --region us-east-1
+   aws ecs register-task-definition --cli-input-json file://../.github/workflows/task-definition-frontend.json --region us-east-1
+   ./create-services.sh
+   `
+
+4. **Teardown Infrastructure (Stop Charges):**
+   `ash
+   cd ../infrastructure
+   ./destroy-aws.sh
+   `

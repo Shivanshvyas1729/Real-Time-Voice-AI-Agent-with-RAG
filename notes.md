@@ -12,28 +12,28 @@
 
 ## 📌 Table of Contents
 
-1. [🚀 Quickstart & Virtual Environment](#1--quickstart--virtual-environment)
-2. [🗄️ Database & Vector Index Configuration](#2-️-database--vector-index-configuration)
+1. [🚀 Quickstart & Virtual Environment](#1-quickstart-virtual-environment)
+2. [🗄️ Database & Vector Index Configuration](#2-database-vector-index-configuration)
    - [MongoDB Vector Index Schema](#mongodb-vector-index-schema)
    - [Async Database Connection Handler (`app/database.py`)](#async-database-connection-handler-appdatabasepy)
    - [Environment Configuration (`app/config.py`)](#environment-configuration-appconfigpy)
    - [MongoDB Driver Timeout Settings](#mongodb-driver-timeout-settings)
-3. [📐 Domain Architecture & Entity Modeling](#3--domain-architecture--entity-modeling)
+3. [📐 Domain Architecture & Entity Modeling](#3-domain-architecture-entity-modeling)
    - [Entity Relationship Diagram (ERD)](#entity-relationship-diagram-erd)
    - [The 4-Category Model Design Pattern](#the-4-category-model-design-pattern)
    - [Detailed Breakdown of Codebase Entities](#detailed-breakdown-of-codebase-entities)
    - [Entity Summary Matrix](#entity-summary-matrix)
-   - [Multi-Tenancy & 1-to-Many Relationships](#multi-tenancy--1-to-many-relationships)
+   - [Multi-Tenancy & 1-to-Many Relationships](#multi-tenancy-1-to-many-relationships)
    - [The 4-Step Mental Formula for System Design](#the-4-step-mental-formula-for-system-design)
-4. [📁 Equipment & Document Ingestion Workflow](#4--equipment--document-ingestion-workflow)
+4. [📁 Equipment & Document Ingestion Workflow](#4-equipment-document-ingestion-workflow)
    - [File Upload Routing (`app/routers/equipment.py`)](#file-upload-routing-approutersequipmentpy)
-   - [Cloud Storage Key Convention](#cloud-storage-key-convention)
-   - [Embedding Lifecycle Tracking](#embedding-lifecycle-tracking)
-5. [🧰 Custom Pydantic Types & MIME Types Guide](#5--custom-pydantic-types--mime-types-guide)
-   - [BSON ObjectId Serialization (`BeforeValidator` & `PlainSerializer`)](#bson-objectid-serialization-beforevalidator--plainserializer)
-   - [MIME Types Guide & Format Cheat Sheet](#mime-types-guide--format-cheat-sheet)
+   - [Cloud Storage Key Convention](#2-cloud-storage-key-convention)
+   - [Embedding Lifecycle Tracking](#3-embedding-lifecycle-tracking)
+5. [🧰 Custom Pydantic Types & MIME Types Guide](#5-custom-pydantic-types-mime-types-guide)
+   - [BSON ObjectId Serialization (`BeforeValidator` & `PlainSerializer`)](#bson-objectid-serialization-beforevalidator-plainserializer)
+   - [MIME Types Guide & Format Cheat Sheet](#mime-types-guide-format-cheat-sheet)
    - [Embedding Progress Logging Throttle](#embedding-progress-logging-throttle)
-6. [🧠 RAG Data Model Architecture (`app/models/rag.py`)](#6--rag-data-model-architecture-appmodelsragpy)
+6. [🧠 RAG Data Model Architecture (`app/models/rag.py`)](#6-rag-data-model-architecture-appmodelsragpy)
    - [Data Separation Framework](#data-separation-framework)
    - [Step-by-Step Pydantic Schema Definitions](#step-by-step-pydantic-schema-definitions)
    - [5-Point RAG Model Checklist](#5-point-rag-model-checklist)
@@ -42,25 +42,25 @@
    - [Bot Consumption Architecture (`app/bot.py`)](#bot-consumption-architecture-appbotpy)
    - [30-Second Copy-Paste Blueprint](#30-second-copy-paste-blueprint)
    - [ID Field Typing Rules](#id-field-typing-rules)
-7. [🔍 MongoDB Atlas Vector Search Pipeline Architecture](#7--mongodb-atlas-vector-search-pipeline-architecture)
+7. [🔍 MongoDB Atlas Vector Search Pipeline Architecture](#7-mongodb-atlas-vector-search-pipeline-architecture)
    - [The `$vectorSearch` Aggregation Stage](#the-vectorsearch-aggregation-stage)
-   - [Vector Search Architecture & MQL-to-Python Mapping](#vector-search-architecture--mql-to-python-mapping)
+   - [Vector Search Architecture & MQL-to-Python Mapping](#vector-search-architecture-mql-to-python-mapping)
    - [Pipeline Execution Flowchart](#pipeline-execution-flowchart)
-   - [Metadata Projection & Similarity Scoring (`$project`)](#metadata-projection--similarity-scoring-project)
+   - [Metadata Projection & Similarity Scoring (`$project`)](#metadata-projection-similarity-scoring-project)
    - [Why Aggregation Pipelines are Lists](#why-aggregation-pipelines-are-lists)
-8. [⚡ Production RAG Service Implementation (`app/services/rag.py`)](#8--production-rag-service-implementation-appservicesragpy)
+8. [⚡ Production RAG Service Implementation (`app/services/rag.py`)](#8-production-rag-service-implementation-appservicesragpy)
    - [Official MongoDB Documentation Pattern vs Production Service](#official-mongodb-documentation-pattern-vs-production-service)
    - [Production `RAGService` Class Implementation](#production-ragservice-class-implementation)
-   - [Architectural Comparison & Key Enhancements](#architectural-comparison--key-enhancements)
-9. [📚 Developer Reference & Documentation Resources](#9--developer-reference--documentation-resources)
-   - [Documentation Index](#documentation-index)
+   - [Architectural Comparison & Key Enhancements](#architectural-comparison-key-enhancements)
+9. [📚 Developer Reference & Documentation Resources](#9-developer-reference-documentation-resources)
+   - [Documentation Index](#official-documentation-links)
    - [Official Documentation Links](#official-documentation-links)
    - [Google Search Keywords Cheat Sheet](#google-search-keywords-cheat-sheet)
    - [Local Project Reference Files](#local-project-reference-files)
    - [Recommended System Diagramming Tools](#recommended-system-diagramming-tools)
-   - [Specific Links for Components Used in Your Project](#-1-specific-links-for-components-used-in-your-project)
-   - [Specific Links for Future Capabilities](#-2-specific-links-for-future-capabilities)
-10. [🎙️ Overview of Pipecat](#overview-of-pipecat)
+   - [Specific Links for Components Used in Your Project](#1-specific-links-for-components-used-in-your-project)
+   - [Specific Links for Future Capabilities](#2-specific-links-for-future-capabilities)
+10. [🎙️ Overview of Pipecat](#10-overview-of-pipecat)
    - [What You'll Learn](#what-youll-learn)
    - [Why Voice AI is Challenging](#why-voice-ai-is-challenging)
    - [Pipecat's Solution](#pipecats-solution)
@@ -1196,6 +1196,154 @@ When searching on Google for fast answers:
 
 ## 10. 🎙️ Overview of Pipecat
 
+
+---
+
+## ?? Pipecat Architecture, Diagrams & Fundamental Concepts Deep Dive
+
+This section provides visual diagrams, code blueprints, and communication channel breakdowns for Pipecat's real-time voice orchestration engine based on fundamental core concepts.
+
+---
+
+### 1. ?? The 5 Fundamental Concepts of Pipecat
+
+![Pipecat Fundamental Concepts](docs/images/pipecat_fundamental_concepts.png)
+
+```mermaid
+graph LR
+    A[1. Frames] --> B[2. Pipeline]
+    B --> C[3. Pipeline Task]
+    C --> D[4. Transport]
+    D --> E[5. Runner]
+```
+
+* **1. Frames**: The fundamental data units (Audio, Text, Control Signals, Metrics) flowing asynchronously through the system.
+* **2. Pipeline**: An ordered list of frame processors through which frames flow sequentially.
+* **3. Pipeline Task**: The runtime execution container binding the pipeline with execution parameters (`PipelineParams`) and observers (`RTVIObserver`).
+* **4. Transport**: The network abstraction layer (e.g. WebSockets, WebRTC) handling audio I/O, VAD (Voice Activity Detection), and turn detection.
+* **5. Runner**: The main entry point function initiating the transport and running the bot event loop via `run_bot(transport, runner_args)`.
+
+---
+
+### 2. ?? Frame Processor Data Flow
+
+![Pipecat Frame Processor Flow](docs/images/pipecat_frame_processor.png)
+
+```mermaid
+graph TD
+    AudioIn[Audio Frames from Client Mic] --> STT[STT Service
+(Deepgram Frame Processor)]
+    STT --> TextFrames[Text Frames]
+    TextFrames --> LLM[LLM Service
+(Groq / Llama Frame Processor)]
+    LLM --> LLMTextFrames[LLM Text Frames]
+    LLMTextFrames --> TTS[TTS Service
+(ElevenLabs Frame Processor)]
+    TTS --> SpeechOut[Speech / Audio Frames to Client Speaker]
+```
+
+**Key Stages**:
+1. **Audio Frames -> STT Service**: Ingests raw audio chunks from client microphone and streams text transcripts.
+2. **Text Frames -> LLM Service**: Transcripts are injected into prompt context to stream LLM token responses.
+3. **LLM Text Frames -> TTS Service**: Token stream is synthesized into high-fidelity audio chunks.
+4. **Speech Output**: Synthesized audio frames flow to the transport output to play through client speakers.
+
+---
+
+### 3. ?? Pipeline Processor Chain Definition
+
+![Pipecat Pipeline Code](docs/images/pipecat_pipeline_code.png)
+
+```python
+pipeline = Pipeline([
+    transport.input(),              # 1. Transport User Input (Microphone Audio)
+    rtvi,                          # 2. RTVI Protocol Processor
+    stt,                           # 3. Speech-to-Text Transcription (Deepgram)
+    context_aggregator.user(),     # 4. Ingest User Transcript into Context
+    llm,                           # 5. LLM Inference & Streaming (Groq)
+    tts,                           # 6. Text-to-Speech Synthesis (ElevenLabs)
+    transport.output(),            # 7. Transport Bot Output (Speaker Audio)
+    context_aggregator.assistant() # 8. Ingest Assistant Spoken Response into Context
+])
+```
+
+```mermaid
+graph TD
+    In[transport.input()] --> RTVI[rtvi]
+    RTVI --> STT[stt]
+    STT --> UserCtx[context_aggregator.user()]
+    UserCtx --> LLM[llm]
+    LLM --> TTS[tts]
+    TTS --> Out[transport.output()]
+    Out --> AssistCtx[context_aggregator.assistant()]
+```
+
+---
+
+### 4. ?? Pipeline vs. Pipeline Task Execution Container
+
+![Pipecat Pipeline vs Pipeline Task](docs/images/pipecat_pipeline_vs_task.png)
+
+```python
+# 1. Pipeline Definition: The ordered chain of processors
+pipeline = Pipeline([ ... ])
+
+# 2. PipelineTask: The active execution wrapper
+task = PipelineTask(
+    pipeline,
+    params=PipelineParams(
+        enable_metrics=True,
+        enable_usage_metrics=True,
+    ),
+    observers=[RTVIObserver(rtvi)],
+)
+```
+
+```mermaid
+graph TD
+    subgraph PipelineTask["PipelineTask (Active Runtime Task)"]
+        subgraph Pipeline["Pipeline (Sequential Processor List)"]
+            P1[transport.input()] --> P2[STT / LLM / TTS] --> P3[transport.output()]
+        end
+        Params["PipelineParams
+(enable_metrics=True, enable_usage_metrics=True)"]
+        Observers["Observers
+([RTVIObserver(rtvi)])"]
+    end
+```
+
+---
+
+### 5. ?? Client <---> Pipeline Task Communication Channels
+
+![Pipecat Client and Pipeline Task Communication Channels](docs/images/pipecat_client_pipeline_task_channels.png)
+
+```mermaid
+graph LR
+    subgraph ClientBox["Client (Browser / Native Client)"]
+        Client[Client Application]
+    end
+
+    subgraph ServerBox["Pipeline Task Container"]
+        subgraph GreenBox["Pipeline Task"]
+            Def["Pipeline_definition
+(Audio Processing Chain)"]
+            Observer["RTVI Observer
+(Telemetry & Control Events)"]
+        end
+    end
+
+    Client <===>|Audio Channel
+(Inbound Mic PCM / Outbound Speaker Audio)| Def
+    Client <===>|Data Channel
+(RTVI Protocol Events, Actions & Telemetry)| Observer
+```
+
+* **Audio Channel**: Handles full-duplex bi-directional audio streaming (PCM input from microphone <-> synthesized audio output to speakers).
+* **Data Channel**: Transmits real-time control signals, barge-in interruptions, volume metrics, custom action dispatches, and client state updates via RTVI protocol.
+
+
+
 > Learn the foundational concepts of Pipecat's architecture for building voice AI agents
 
 ## What You'll Learn
@@ -1362,16 +1510,16 @@ Each section includes practical examples and configuration options to help you b
 
 | Component in `bot.py` | Direct Documentation / Code Link |
 | :--- | :--- |
-| **Pipeline & Frame Processors** | [Pipecat Core Concepts: Pipelines & Processors](https://docs.pipecat.ai/guides/core-concepts) |
-| **Custom Processors (`FrameProcessor`)** | [Building Custom Processors Guide](https://docs.pipecat.ai/guides/custom-processors) |
+| **Pipeline & Frame Processors** | [Pipecat Core Concepts: Pipelines & Processors](https://docs.pipecat.ai/pipecat/learn/pipeline) |
+| **Custom Processors (`FrameProcessor`)** | [Building Custom Processors Guide](https://docs.pipecat.ai/pipecat/fundamentals/custom-frame-processor) |
 | **Frames Reference (`pipecat.frames`)** | [Pipecat Frames Source Code & Reference](https://github.com/pipecat-ai/pipecat/blob/main/src/pipecat/frames/frames.py) |
-| **LLM Function Calling & Tools** | [Pipecat Function Calling / Tools Guide](https://docs.pipecat.ai/guides/features/function-calling) |
-| **VAD & Smart Turn Detection** | [Turn Detection & Silero VAD Guide](https://docs.pipecat.ai/guides/features/turn-detection) |
-| **RTVI Client Protocol** | [RTVI Setup & Protocol Specification](https://docs.pipecat.ai/guides/features/rtvi) |
-| **Deepgram STT Integration** | [Deepgram STT Service Documentation](https://docs.pipecat.ai/services/stt/deepgram) |
-| **Groq LLM Integration** | [Groq LLM Service Documentation](https://docs.pipecat.ai/services/llm/groq) |
-| **ElevenLabs TTS Integration** | [ElevenLabs TTS Service Documentation](https://docs.pipecat.ai/services/tts/elevenlabs) |
-| **FastAPI WebSocket Transport** | [FastAPI WebSocket Transport Reference](https://docs.pipecat.ai/transports/websocket) |
+| **LLM Function Calling & Tools** | [Pipecat Function Calling / Tools Guide](https://docs.pipecat.ai/pipecat/learn/function-calling) |
+| **VAD & Smart Turn Detection** | [Turn Detection & Silero VAD Guide](https://docs.pipecat.ai/pipecat/learn/speech-input) |
+| **RTVI Client Protocol** | [RTVI Setup & Protocol Specification](https://docs.pipecat.ai/client/rtvi-standard) |
+| **Deepgram STT Integration** | [Deepgram STT Service Documentation](https://docs.pipecat.ai/pipecat/learn/speech-to-text) |
+| **Groq LLM Integration** | [Groq LLM Service Documentation](https://docs.pipecat.ai/pipecat/learn/llm) |
+| **ElevenLabs TTS Integration** | [ElevenLabs TTS Service Documentation](https://docs.pipecat.ai/pipecat/learn/text-to-speech) |
+| **FastAPI WebSocket Transport** | [FastAPI WebSocket Transport Reference](https://docs.pipecat.ai/pipecat/learn/transports) |
 
 ---
 
@@ -1379,11 +1527,11 @@ Each section includes practical examples and configuration options to help you b
 
 | Future Feature | Direct Link |
 | :--- | :--- |
-| **User Interruption & Audio Cancellation** | [Handling User Interruptions & Barge-in](https://docs.pipecat.ai/guides/features/interruptions) |
-| **Latency Metrics & Observability (TTFB)** | [Pipeline Metrics and Usage Tracking](https://docs.pipecat.ai/guides/features/metrics) |
+| **User Interruption & Audio Cancellation** | [Handling User Interruptions & Barge-in](https://docs.pipecat.ai/pipecat/fundamentals/interruptions) |
+| **Latency Metrics & Observability (TTFB)** | [Pipeline Metrics and Usage Tracking](https://docs.pipecat.ai/pipecat/fundamentals/metrics) |
 | **Audio Recording (`WaveFileRecorder`)** | [Audio Recording Processors](https://github.com/pipecat-ai/pipecat/blob/main/src/pipecat/processors/audio/audio_buffer_processor.py) |
-| **Telephony Integration (Twilio / SIP)** | [Telephony & WebRTC Transports](https://docs.pipecat.ai/transports/telephony) |
-| **Noise Suppression Filters (RNNoise / Krisp)** | [Audio Filters & Noise Reduction](https://docs.pipecat.ai/transports/audio-filters) |
+| **Telephony Integration (Twilio / SIP)** | [Telephony & WebRTC Transports](https://docs.pipecat.ai/pipecat/telephony/overview) |
+| **Noise Suppression Filters (RNNoise / Krisp)** | [Audio Filters & Noise Reduction](https://docs.pipecat.ai/pipecat/features/krisp-viva) |
 | **Official Working Examples** | [Pipecat GitHub Examples Directory](https://github.com/pipecat-ai/pipecat/tree/main/examples) |
 | **RTVI Frontend Client Library (JS/React)** | [RTVI Client JavaScript/TypeScript Repo](https://github.com/rtvi-ai/rtvi-client-js) |
 
