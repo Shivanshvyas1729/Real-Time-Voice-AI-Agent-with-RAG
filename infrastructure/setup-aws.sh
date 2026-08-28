@@ -44,7 +44,7 @@ else
 
     aws secretsmanager create-secret \
         --name $SECRET_NAME \
-        --description "Secrets for Raghav Voice Agent" \
+        --description "Secrets for Shivansh Voice Agent" \
         --secret-string "$SECRET_STRING" \
         --region $REGION
     

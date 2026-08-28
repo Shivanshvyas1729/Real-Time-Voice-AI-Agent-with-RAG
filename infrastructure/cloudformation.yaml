@@ -1,5 +1,5 @@
 AWSTemplateFormatVersion: '2010-09-09'
-Description: 'Infrastructure for Raghav Voice AI Agent: VPC, ALB, ECS Cluster, ECR, and IAM'
+Description: 'Infrastructure for Shivansh Voice AI Agent: VPC, ALB, ECS Cluster, ECR, and IAM'
 
 Parameters:
   ProjectName:

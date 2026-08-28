@@ -4,7 +4,7 @@ This guide details
 
 ## AWS Cloud Infrastructure Architecture
 
-`mermaid
+```mermaid
 graph TB
     subgraph AWS Cloud (Region: us-east-1)
         subgraph VPC (10.0.0.0/16)
@@ -42,7 +42,7 @@ graph TB
 
 This diagram matches the exact network architecture deployed by your \cloudformation.yaml\ template:
 
-`mermaid
+```mermaid
 graph LR
     User([Users / Internet]) --> IGW[Internet Gateway]
     
@@ -94,7 +94,7 @@ graph LR
 
 ## Deployment Workflow Architecture
 
-`mermaid
+```mermaid
 graph TD
     A[Local WSL / Terminal] -->|Run setup-aws.sh| B(AWS CloudFormation)
     B -->|Creates| C[VPC, ALB, ECR, ECS Cluster]
@@ -193,7 +193,7 @@ If you need a restricted policy, ensure the user has:
 - `IAMFullAccess` (Required to create Execution/Task Roles)
 
 **Custom Policy (Minimum Required Actions):**
-```json
+````json
 {
     "Version": "2012-10-17",
     "Statement": [
@@ -225,7 +225,7 @@ If you need a restricted policy, ensure the user has:
         }
     ]
 }
-```
+````
 > [!WARNING]
 > The `iam:PassRole` permission is critical. It allows the deployment user to assign the `ECSExecutionRole` and `ECSTaskRole` to the ECS Tasks. without it, deployments will fail.
 
@@ -293,10 +293,10 @@ Now that Task Definitions verify valid images exist, we can create the actual EC
 
 Run the service creation script locally:
 
-```bash
+````bash
 chmod +x scripts/create-services.sh
 ./scripts/create-services.sh
-```
+````
 
 **After this script completes:**
 1.  Go back to GitHub Actions.
@@ -307,10 +307,10 @@ chmod +x scripts/create-services.sh
 
 Ensure ECS tasks can access the Secrets Manager:
 
-```bash
+````bash
 chmod +x fix-iam-permissions.sh
 ./fix-iam-permissions.sh
-```
+````
 
 ---
 
@@ -325,4 +325,5 @@ Your application should now be live at the **ALBDNSName** URL you noted in Step 
 - **WebSocket Connection Fails**: Ensure `FORCE_SECURE_WEBSOCKET` is configured correctly if using HTTPS, or check ALB idle timeout settings (should be 600s).
 - **MongoDB Connection Error**: Verify `ca-certificates` are installed in the Docker image and IP whitelist includes the AWS NAT Gateway IPs.
 - **Deployment Stuck**: Check ECS Service Events in the AWS Console for error messages (e.g., "exec format error" indicates wrong platform build).
+
 
