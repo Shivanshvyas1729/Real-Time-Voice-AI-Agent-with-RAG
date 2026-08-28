@@ -127,33 +127,33 @@ Developer: **Shivansh Vyas** (Shivanshvyas1729)
 graph TB
     subgraph AWSCloud["AWS Cloud (Region: us-east-1)"]
         subgraph VPC["VPC (10.0.0.0/16)"]
-            IGW[Internet Gateway]
+            IGW["Internet Gateway"]
             
             subgraph PublicSubnets["Public Subnets (Subnet 1 & 2)"]
-                ALB[Application Load Balancer]
-                NAT[NAT Gateway]
+                ALB["Application Load Balancer"]
+                NAT["NAT Gateway"]
             end
             
             subgraph PrivateSubnets["Private Subnets (Subnet 1 & 2)"]
                 subgraph ECSCluster["ECS Cluster (rag-voice-agent-cluster)"]
-                    BackendTask[ECS Task: Backend Container - Port 8000]
-                    FrontendTask[ECS Task: Frontend Container - Port 80]
+                    BackendTask["ECS Task: Backend Container - Port 8000"]
+                    FrontendTask["ECS Task: Frontend Container - Port 80"]
                 end
             end
         end
         
-        Secrets[AWS Secrets Manager: rag-voice-agent-secrets]
-        ECR_BE[ECR Repository: rag-voice-agent-backend]
-        ECR_FE[ECR Repository: rag-voice-agent-frontend]
+        Secrets["AWS Secrets Manager: rag-voice-agent-secrets"]
+        ECR_BE["ECR Repository: rag-voice-agent-backend"]
+        ECR_FE["ECR Repository: rag-voice-agent-frontend"]
     end
 
-    Users([Internet Users]) -->|HTTP/HTTPS Traffic| ALB
-    ALB -->|Routes /api/v1/*| BackendTask
-    ALB -->|Routes /*| FrontendTask
-    BackendTask -->|Retrieves Secrets| Secrets
-    ECS Cluster -->|Pulls Docker Images| ECR_BE
-    ECS Cluster -->|Pulls Docker Images| ECR_FE
-    BackendTask -->|Outbound Internet Access| NAT
+    Users(["Internet Users"]) -->|"HTTP/HTTPS Traffic"| ALB
+    ALB -->|"Routes /api/v1/*"| BackendTask
+    ALB -->|"Routes /*"| FrontendTask
+    BackendTask -->|"Retrieves Secrets"| Secrets
+    ECSCluster -->|"Pulls Docker Images"| ECR_BE
+    ECSCluster -->|"Pulls Docker Images"| ECR_FE
+    BackendTask -->|"Outbound Internet Access"| NAT
     NAT --> IGW
 ```
 
