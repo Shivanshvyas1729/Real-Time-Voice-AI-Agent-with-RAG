@@ -6,16 +6,16 @@ on:
       - main
 
 env:
-  AWS_REGION: ${{ secrets.AWS_REGION }}
-  ECR_REPOSITORY_BACKEND: ${{ secrets.ECR_REPOSITORY_BACKEND }}
-  ECR_REPOSITORY_FRONTEND: ${{ secrets.ECR_REPOSITORY_FRONTEND }}
-  ECS_SERVICE_BACKEND: ${{ secrets.ECS_SERVICE_BACKEND }}
-  ECS_SERVICE_FRONTEND: ${{ secrets.ECS_SERVICE_FRONTEND }}
-  ECS_CLUSTER: ${{ secrets.ECS_CLUSTER }}
-  ECS_TASK_DEFINITION_BACKEND: ${{ secrets.ECS_TASK_DEFINITION_BACKEND }}
-  ECS_TASK_DEFINITION_FRONTEND: ${{ secrets.ECS_TASK_DEFINITION_FRONTEND }}
-  CONTAINER_NAME_BACKEND: ${{ secrets.CONTAINER_NAME_BACKEND }}
-  CONTAINER_NAME_FRONTEND: ${{ secrets.CONTAINER_NAME_FRONTEND }}
+  AWS_REGION: ${{ secrets.AWS_REGION || 'us-east-1' }}
+  ECR_REPOSITORY_BACKEND: ${{ secrets.ECR_REPOSITORY_BACKEND || 'rag-voice-agent-backend' }}
+  ECR_REPOSITORY_FRONTEND: ${{ secrets.ECR_REPOSITORY_FRONTEND || 'rag-voice-agent-frontend' }}
+  ECS_SERVICE_BACKEND: ${{ secrets.ECS_SERVICE_BACKEND || 'rag-voice-agent-backend-service' }}
+  ECS_SERVICE_FRONTEND: ${{ secrets.ECS_SERVICE_FRONTEND || 'rag-voice-agent-frontend-service' }}
+  ECS_CLUSTER: ${{ secrets.ECS_CLUSTER || 'rag-voice-agent-cluster' }}
+  ECS_TASK_DEFINITION_BACKEND: ${{ secrets.ECS_TASK_DEFINITION_BACKEND || '.github/workflows/task-definition-backend.json' }}
+  ECS_TASK_DEFINITION_FRONTEND: ${{ secrets.ECS_TASK_DEFINITION_FRONTEND || '.github/workflows/task-definition-frontend.json' }}
+  CONTAINER_NAME_BACKEND: ${{ secrets.CONTAINER_NAME_BACKEND || 'rag-voice-agent-backend-container' }}
+  CONTAINER_NAME_FRONTEND: ${{ secrets.CONTAINER_NAME_FRONTEND || 'rag-voice-agent-frontend-container' }}
 
 permissions:
   contents: read
