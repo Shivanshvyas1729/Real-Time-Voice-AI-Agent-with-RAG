@@ -1163,6 +1163,18 @@ class RAGService:
 
 ## 9. 📚 Developer Reference & Documentation Resources
 
+
+### ?? Alternative Free-Tier Deployment (Vercel, Render, Koyeb)
+
+If you prefer to deploy for **100% FREE** without AWS charges:
+* **Frontend**: Deploy `frontend/` on [Vercel](https://vercel.com) (Vite + React).
+* **Backend**: Deploy `backend/` on [Render](https://render.com) or [Koyeb](https://koyeb.com) (FastAPI + WebSockets).
+* **Database**: Host on [MongoDB Atlas](https://mongodb.com) (M0 Free Vector Search Cluster).
+
+?? **For the complete step-by-step guide, see [FREE_TIER_DEPLOYMENT_GUIDE.md](FREE_TIER_DEPLOYMENT_GUIDE.md).**
+
+
+
 ### Official Documentation Links
 - [MongoDB Atlas Vector Search Documentation](https://www.mongodb.com/docs/atlas/atlas-vector-search/vector-search-stage/)
 - [Pydantic v2 Documentation](https://docs.pydantic.dev/latest/)
