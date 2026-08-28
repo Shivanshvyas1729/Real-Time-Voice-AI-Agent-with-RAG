@@ -519,6 +519,9 @@ This application is fully automated for production on **AWS Cloud** using **ECS 
 
 ### AWS Cloud Architecture Diagram
 
+<img width="980" height="426" alt="image" src="https://github.com/user-attachments/assets/744ecd65-5ad6-4a35-91b2-42d0000d47a0" />
+
+
 ```mermaid
 graph TB
     subgraph AWSCloud["AWS Cloud (Region: us-east-1)"]
