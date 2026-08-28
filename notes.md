@@ -1190,6 +1190,22 @@ When searching on Google for fast answers:
 4. `"pydantic v2 BeforeValidator PlainSerializer ObjectId"`
 
 ### Local Project Reference Files
+
+### ?? Project Reference Files Directory
+
+The table below maps all key technical documentation files available in the repository root:
+
+| Reference File | Description & Technical Scope |
+| :--- | :--- |
+| **[`DATABASE_SCHEMA_AND_MODELS.md`](DATABASE_SCHEMA_AND_MODELS.md)** | Technical specification for MongoDB schemas, Pydantic v2 domain models (`Equipment`, `Document`, `RAG`), BSON ObjectId custom serializers, and multi-tenancy rules. |
+| **[`FREE_TIER_DEPLOYMENT_GUIDE.md`](FREE_TIER_DEPLOYMENT_GUIDE.md)** | Step-by-step 100% free production deployment guide covering Vercel (Frontend), Render / Koyeb (FastAPI Backend), and MongoDB Atlas M0 Cluster (Vector Search). |
+| **[`AWS_VPC_ARCHITECTURE_EXPLANATION.md`](AWS_VPC_ARCHITECTURE_EXPLANATION.md)** | In-depth technical breakdown of the production AWS Cloud VPC, Public/Private subnets, Application Load Balancer (ALB) ingress, and NAT Gateway egress routing. |
+| **[`deployment.md`](deployment.md)** | Complete AWS production deployment guide covering AWS ECS Fargate, CloudFormation IaC infrastructure, ECR container push scripts, and GitHub Actions CI/CD workflows. |
+| **[`notes.md`](notes.md)** | Comprehensive developer progress notes, technical architectural deep dives, Pipecat framework concepts, and copy-paste code blueprints. |
+| **[`FUTURE_UPDATES.md`](FUTURE_UPDATES.md)** | Project roadmap detailing planned features, upcoming enhancements, multi-agent orchestrations, and future system updates. |
+| **[`docker-compose.yml`](docker-compose.yml)** | Multi-container local Docker environment specification for running Backend and Frontend containers locally. |
+
+
 - [`app/services/rag.py`](backend/app/services/rag.py) — Clean production RAG pipeline implementation.
 - [`app/models/rag.py`](backend/app/models/rag.py) — Pydantic domain models for RAG search.
 - [`app/routers/equipment.py`](backend/app/routers/equipment.py) — Equipment upload endpoints & document ingestion.
