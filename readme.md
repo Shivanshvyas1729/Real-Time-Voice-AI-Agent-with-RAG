@@ -35,7 +35,7 @@ wsl-> https://github.com/Shivanshvyas1729/pydantic_notes/blob/main/wsl.md
    - [Pipeline Task & Pipeline Runner](#pipeline-task--pipeline-runner)
 
 ---
-![alt text](docs\images\image.png)
+![alt text](image.png)
 
 ## 1. The Basic Flow of a Voice AI Agent
 
@@ -577,6 +577,46 @@ Before running locally or deploying, configure your environment secret files for
 
 ---
 
+
+---
+
+
+---
+
+## 🎤 Deepgram STT Accent & Language Configuration
+
+The Speech-to-Text (STT) engine evaluates your accent **continuously on every single voice utterance** (frame-by-frame on the live audio WebSocket stream), not just once on startup.
+
+### File Location:
+```
+backend/app/bot.py   ← Line ~105 (LiveOptions section)
+```
+
+### How Deepgram Processes Accents:
+Deepgram's `nova-3` model decodes audio chunks in real time. It applies the configured language/accent acoustic model continuously every time you speak.
+
+### How to Change Accents / Languages:
+
+In `backend/app/bot.py`, update the `language` parameter in `LiveOptions`:
+
+```python
+live_options = LiveOptions(
+    model="nova-3",
+    language="en-IN",  # ← Set specific accent code here
+    punctuate=True,
+    # diarize=True
+)
+```
+
+### Supported English Accent Codes:
+
+| Accent Code | Region / Accent | Description |
+| :--- | :--- | :--- |
+| `en-IN` | **Indian English** | Optimized for Indian phonetic pronunciations, cadence, and accents |
+| `en-US` | **American English** | Standard US English acoustic model |
+| `en-GB` | **British English** | UK English pronunciation model |
+| `en-AU` | **Australian English** | Australian English acoustic model |
+| `en` | **General English** | Global multi-accent auto-matching model |
 
 ---
 
