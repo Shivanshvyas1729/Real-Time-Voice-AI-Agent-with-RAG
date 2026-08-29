@@ -132,13 +132,13 @@ async def run_bot(transport: BaseTransport, session_data: Dict[str, Any]):
 
             retrieval_result = await rag_service.retrieve(
                 query=query,
-                k=5,
+                k=3,
                 equipment_id=equipment_id,
                 tenant_id=tenant_id,
             )
 
             clean_data = [
-                {"id": meta.chunk_id, "content": chunk.text}
+                {"id": meta.chunk_id, "content": chunk.text[:500]}
                 for chunk, meta in zip(
                     retrieval_result.data,
                     retrieval_result.metadata.chunks,

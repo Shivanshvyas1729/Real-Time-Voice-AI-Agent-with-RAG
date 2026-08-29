@@ -513,6 +513,70 @@ return {"ws_url": ws_url}
 
 
 
+---
+
+## 💻 Local Development & Execution Guide
+
+### 🔑 Required Environment Variables Setup (.env)
+
+Before running locally or deploying, configure your environment secret files for both backend and frontend:
+
+| Component | Target `.env` File | Template File | Quick Copy Command |
+| :--- | :--- | :--- | :--- |
+| **Backend** | [`backend/.env`](backend/.env) | **[`backend/.env.example`](backend/.env.example)** | `cp backend/.env.example backend/.env` |
+| **Frontend** | [`frontend/.env`](frontend/.env) | **[`frontend/.env.example`](frontend/.env.example)** | `cp frontend/.env.example frontend/.env` |
+
+---
+
+### Option 1: Native Local Mode (WSL / Linux & Windows)
+
+#### 1. Start Services:
+* **WSL / Linux Terminal**:
+  ```bash
+  ./run-local.sh
+  ```
+* **Windows CMD / PowerShell / File Explorer**:
+  Double-click or run:
+  ```cmd
+  .\run-local.bat
+  ```
+
+#### Live Endpoints:
+- **Frontend UI**: `http://localhost:5173`
+- **Backend API**: `http://localhost:8000`
+- **OpenAPI Swagger Docs**: `http://localhost:8000/docs`
+
+#### 2. How to Stop / Close:
+- Press `Ctrl + C` in your running terminal window to cleanly terminate both backend and frontend processes.
+
+---
+
+### Option 2: Docker Compose Mode
+
+#### 1. Start Services:
+* **Terminal Command**:
+  ```bash
+  docker compose up --build
+  ```
+* **Windows Batch Launcher**:
+  Double-click or run:
+  ```cmd
+  .\run-docker.bat
+  ```
+
+#### Live Endpoints:
+- **Frontend UI**: `http://localhost:3000`
+- **Backend API**: `http://localhost:8000`
+
+#### 2. How to Stop / Close:
+- Press `Ctrl + C` in the running terminal window.
+- Or run the teardown command in a terminal:
+  ```bash
+  docker compose down
+  ```
+
+---
+
 ## 🧭 Recommended Reading & Study Roadmap ("Watch Order")
 
 If you are reviewing this codebase for technical interviews, architecture audits, or deployment, follow this recommended sequence to understand the system from high-level architecture down to low-level implementation code:

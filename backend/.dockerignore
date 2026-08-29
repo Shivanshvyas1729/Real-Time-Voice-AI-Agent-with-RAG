@@ -1,0 +1,36 @@
+# =================================================================
+# Docker Build Ignore File (AWS ECR & ECS Isolation)
+# =================================================================
+
+# Render & Vercel deployment files
+render.yaml
+vercel.json
+
+# Local Batch & Shell scripts
+*.bat
+*.sh
+run-local.*
+run-docker.*
+
+# Documentation & Scratch files
+docs/
+*.md
+LICENSE
+.github/
+
+# Development virtual environments & cache
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Git & IDE metadata
+.git/
+.gitignore
+.dockerignore
+.vscode/
+.idea/
