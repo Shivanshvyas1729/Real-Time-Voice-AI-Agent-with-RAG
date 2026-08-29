@@ -205,9 +205,16 @@ async def run_bot(transport: BaseTransport, session_data: Dict[str, Any]):
     user_aggregator, assistant_aggregator = LLMContextAggregatorPair(context)
 
     # 6. TTS Service Setup (ElevenLabs Synthesizer)
+    # Model options (set ELEVENLABS_MODEL env var or change the default below):
+    #   eleven_flash_v2_5        - Ultra-low latency ~75ms  [CURRENT - recommended for real-time voice agents]
+    #   eleven_v3_conversational - Most expressive realtime ~280ms
+    #   eleven_multilingual_v2  - Highest quality, ~300ms latency, 29 languages
+    #   eleven_v3               - Most emotionally rich, not real-time optimized
+    # See full model list: https://elevenlabs.io/docs/overview/models
     tts = ElevenLabsTTSService(
         api_key=os.getenv("ELEVENLABS_API_KEY", ""),
         voice_id=os.getenv("ELEVENLABS_VOICE_ID", "pNInz6obpgDQGcFmaJgB"),
+        model=os.getenv("ELEVENLABS_MODEL", "eleven_flash_v2_5"),
     )
 
     # 7. Construct Pipecat Pipeline

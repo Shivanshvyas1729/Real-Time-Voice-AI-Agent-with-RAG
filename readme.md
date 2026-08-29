@@ -577,6 +577,45 @@ Before running locally or deploying, configure your environment secret files for
 
 ---
 
+
+---
+
+## 🔊 Changing the ElevenLabs TTS Model
+
+The TTS model is configured in [`backend/app/bot.py`](backend/app/bot.py) via the `ELEVENLABS_MODEL` environment variable (or hard-coded default).
+
+### File Location:
+```
+backend/app/bot.py   ← Line ~207 (TTS Service Setup section)
+```
+
+### How to Change the Model:
+
+**Option A** — Set environment variable in `backend/.env`:
+```env
+ELEVENLABS_MODEL=eleven_flash_v2_5
+```
+
+**Option B** — Edit the default directly in `backend/app/bot.py`:
+```python
+model=os.getenv("ELEVENLABS_MODEL", "eleven_flash_v2_5"),  # ← change here
+```
+
+### Available Models:
+
+| Model ID | Latency | Quality | Use Case |
+| :--- | :--- | :--- | :--- |
+| `eleven_flash_v2_5` ✅ **(Current)** | ~75ms | Great | Real-time voice agents, low-latency streaming |
+| `eleven_v3_conversational` | ~280ms | Most Expressive | Expressive realtime dialogue agents |
+| `eleven_multilingual_v2` | ~300ms | Highest | Long-form narration, 29 languages |
+| `eleven_v3` | ~500ms | Ultra Rich | Audiobooks, character voiceovers |
+
+> **Full model reference**: [https://elevenlabs.io/docs/overview/models](https://elevenlabs.io/docs/overview/models)
+
+> **Note**: `eleven_turbo_v2_5` is deprecated — replaced by `eleven_flash_v2_5` with lower latency at the same price.
+
+---
+
 ## 🧭 Recommended Reading & Study Roadmap ("Watch Order")
 
 If you are reviewing this codebase for technical interviews, architecture audits, or deployment, follow this recommended sequence to understand the system from high-level architecture down to low-level implementation code:
