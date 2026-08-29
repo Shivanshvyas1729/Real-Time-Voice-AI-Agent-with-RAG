@@ -105,7 +105,12 @@ async def run_bot(transport: BaseTransport, session_data: Dict[str, Any]):
     rag_service = RAGService()
 
     # 1. STT Service Setup (Deepgram Live Transcriber)
-    live_options = LiveOptions(diarize=True)
+    live_options = LiveOptions(
+        model="nova-3",
+        language="en",
+        punctuate=True,
+        # diarize=True       # ❌ REMOVED: Do NOT use speaker separation in 1-on-1 voice bot
+    )
     stt = DeepgramSTTService(
         api_key=os.getenv("DEEPGRAM_API_KEY"),
         live_options=live_options,
