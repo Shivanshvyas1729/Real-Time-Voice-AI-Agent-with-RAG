@@ -35,7 +35,7 @@ wsl-> https://github.com/Shivanshvyas1729/pydantic_notes/blob/main/wsl.md
    - [Pipeline Task & Pipeline Runner](#pipeline-task--pipeline-runner)
 
 ---
-![alt text](image.png)
+![alt text](docs\images\image.png)
 
 ## 1. The Basic Flow of a Voice AI Agent
 

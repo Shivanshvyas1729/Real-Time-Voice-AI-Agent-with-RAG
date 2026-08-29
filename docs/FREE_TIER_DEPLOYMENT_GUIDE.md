@@ -20,9 +20,15 @@ flowchart LR
         Mongo["MongoDB Atlas M0<br/>Vector Search Cluster"]
     end
 
-    ReactUI -->|"1. HTTPS / WSS Streaming API Requests"| FastAPI
+    subgraph ExternalAPIs["External AI Cloud Services"]
+        STT["Deepgram STT"]
+        LLM["Groq LLM"]
+        TTS["ElevenLabs TTS"]
+    end
+
+    ReactUI -->|"1. HTTPS / WSS Streaming"| FastAPI
     FastAPI -->|"2. Vector Search Queries"| Mongo
-    FastAPI -->|"3. Streaming Audio APIs"| ExternalAPIs["Deepgram STT / Groq LLM / ElevenLabs TTS"]
+    FastAPI -->|"3. Streaming Audio APIs"| ExternalAPIs
 ```
 
 ---
