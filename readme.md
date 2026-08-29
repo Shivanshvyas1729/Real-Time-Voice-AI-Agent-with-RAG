@@ -278,13 +278,13 @@ Here are the specific, direct documentation and repository links categorized by 
 
 ---
 
-## ?? Pipecat Architecture, Diagrams & Fundamental Concepts Deep Dive
+## 🧬 Pipecat Architecture, Diagrams & Fundamental Concepts Deep Dive
 
 This section provides visual diagrams, code blueprints, and communication channel breakdowns for Pipecat's real-time voice orchestration engine based on fundamental core concepts.
 
 ---
 
-### 1. ?? The 5 Fundamental Concepts of Pipecat
+### 1. 🧩 The 5 Fundamental Concepts of Pipecat
 
 ![Pipecat Fundamental Concepts](docs/images/pipecat_fundamental_concepts.png)
 
@@ -304,7 +304,7 @@ graph LR
 
 ---
 
-### 2. ?? Frame Processor Data Flow
+### 2. ⚡ Frame Processor Data Flow
 
 ![Pipecat Frame Processor Flow](docs/images/pipecat_frame_processor.png)
 
@@ -326,7 +326,7 @@ graph TD
 
 ---
 
-### 3. ?? Pipeline Processor Chain Definition
+### 3. 🔗 Pipeline Processor Chain Definition
 
 ![Pipecat Pipeline Code](docs/images/pipecat_pipeline_code.png)
 
@@ -356,7 +356,7 @@ graph TD
 
 ---
 
-### 4. ?? Pipeline vs. Pipeline Task Execution Container
+### 4. 📦 Pipeline vs. Pipeline Task Execution Container
 
 ![Pipecat Pipeline vs Pipeline Task](docs/images/pipecat_pipeline_vs_task.png)
 
@@ -388,7 +388,7 @@ graph TD
 
 ---
 
-### 5. ?? Client <---> Pipeline Task Communication Channels
+### 5. 📡 Client <---> Pipeline Task Communication Channels
 
 ![Pipecat Client and Pipeline Task Communication Channels](docs/images/pipecat_client_pipeline_task_channels.png)
 

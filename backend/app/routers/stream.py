@@ -96,7 +96,8 @@ async def connect(request: Request, payload: ConnectRequest):
 
     # Scheme & Host resolution for ALB / Reverse Proxy compatibility
     forwarded_proto = request.headers.get("X-Forwarded-Proto", request.url.scheme)
-    forwarded_host = request.headers.get("X-Forwarded-Host", request.url.netloc)
+    raw_host = request.headers.get("X-Forwarded-Host") or request.headers.get("host") or request.url.netloc
+    forwarded_host = raw_host.split(",")[0].strip() if raw_host else request.url.netloc
 
     ws_scheme = "wss" if forwarded_proto == "https" else "ws"
     ws_url = f"{ws_scheme}://{forwarded_host}/api/v1/stream/ws/{payload.equipment_id}"

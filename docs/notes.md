@@ -1164,14 +1164,14 @@ class RAGService:
 ## 9. 📚 Developer Reference & Documentation Resources
 
 
-### ?? Alternative Free-Tier Deployment (Vercel, Render, Koyeb)
+### 🚀 Alternative Free-Tier Deployment (Vercel, Render, Koyeb)
 
 If you prefer to deploy for **100% FREE** without AWS charges:
 * **Frontend**: Deploy `frontend/` on [Vercel](https://vercel.com) (Vite + React).
 * **Backend**: Deploy `backend/` on [Render](https://render.com) or [Koyeb](https://koyeb.com) (FastAPI + WebSockets).
 * **Database**: Host on [MongoDB Atlas](https://mongodb.com) (M0 Free Vector Search Cluster).
 
-?? **For the complete step-by-step guide, see [FREE_TIER_DEPLOYMENT_GUIDE.md](FREE_TIER_DEPLOYMENT_GUIDE.md).**
+👉 **For the complete step-by-step guide, see [FREE_TIER_DEPLOYMENT_GUIDE.md](FREE_TIER_DEPLOYMENT_GUIDE.md).**
 
 
 
@@ -1191,7 +1191,7 @@ When searching on Google for fast answers:
 
 ### Local Project Reference Files
 
-### ?? Project Reference Files Directory
+### 📁 Project Reference Files Directory
 
 The table below maps all key technical documentation files available in the repository root:
 
@@ -1227,13 +1227,13 @@ The table below maps all key technical documentation files available in the repo
 
 ---
 
-## ?? Pipecat Architecture, Diagrams & Fundamental Concepts Deep Dive
+## 🧬 Pipecat Architecture, Diagrams & Fundamental Concepts Deep Dive
 
 This section provides visual diagrams, code blueprints, and communication channel breakdowns for Pipecat's real-time voice orchestration engine based on fundamental core concepts.
 
 ---
 
-### 1. ?? The 5 Fundamental Concepts of Pipecat
+### 1. 🧩 The 5 Fundamental Concepts of Pipecat
 
 ![Pipecat Fundamental Concepts](images/pipecat_fundamental_concepts.png)
 
@@ -1253,7 +1253,7 @@ graph LR
 
 ---
 
-### 2. ?? Frame Processor Data Flow
+### 2. ⚡ Frame Processor Data Flow
 
 ![Pipecat Frame Processor Flow](images/pipecat_frame_processor.png)
 
@@ -1275,7 +1275,7 @@ graph TD
 
 ---
 
-### 3. ?? Pipeline Processor Chain Definition
+### 3. 🔗 Pipeline Processor Chain Definition
 
 ![Pipecat Pipeline Code](images/pipecat_pipeline_code.png)
 
@@ -1305,7 +1305,7 @@ graph TD
 
 ---
 
-### 4. ?? Pipeline vs. Pipeline Task Execution Container
+### 4. 📦 Pipeline vs. Pipeline Task Execution Container
 
 ![Pipecat Pipeline vs Pipeline Task](images/pipecat_pipeline_vs_task.png)
 
@@ -1337,7 +1337,7 @@ graph TD
 
 ---
 
-### 5. ?? Client <---> Pipeline Task Communication Channels
+### 5. 📡 Client <---> Pipeline Task Communication Channels
 
 ![Pipecat Client and Pipeline Task Communication Channels](images/pipecat_client_pipeline_task_channels.png)
 

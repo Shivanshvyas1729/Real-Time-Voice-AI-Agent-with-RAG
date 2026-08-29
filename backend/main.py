@@ -87,12 +87,12 @@ else:
         "http://proj3-frontend-prod:80",  # Production container name
     ]
 
-if os.getenv("ENVIRONMENT") == "production":
-    logger.info(f"CORS configured for production with origins: {origins}")
-else:
-    # In development, allow all origins
+if not allowed_origins_env:
+    # Default to wildcard or local/vercel origins if ALLOWED_ORIGINS env var is not specified
     origins = ["*"]
-    logger.info("CORS configured for development (allowing all origins)")
+    logger.info("CORS configured to allow all origins ('*') for free-tier deployment")
+else:
+    logger.info(f"CORS configured with specified origins: {origins}")
 
 app.add_middleware(
     CORSMiddleware,

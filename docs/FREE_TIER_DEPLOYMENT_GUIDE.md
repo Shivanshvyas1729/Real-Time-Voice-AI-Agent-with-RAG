@@ -1,13 +1,13 @@
-# ?? Free-Tier Production Deployment Guide
+# 🚀 Free-Tier Production Deployment Guide
 
 This guide provides a comprehensive, step-by-step walkthrough to deploy the **Real-Time Voice AI Agent & RAG System** using 100% **FREE** cloud hosting services (**Vercel**, **Render**, **Koyeb**, and **MongoDB Atlas**).
 
 ---
 
-## ?? Architecture & System Flow
+## 🏗️ Architecture & System Flow
 
 ```mermaid
-graph LR
+flowchart LR
     subgraph ClientBrowser["User Browser / Client"]
         ReactUI["Vite + React UI<br/>(Hosted on Vercel - Free)"]
     end
@@ -27,7 +27,7 @@ graph LR
 
 ---
 
-## ?? Required API Keys & Environment Variables Matrix
+## 🗝️ Required API Keys & Environment Variables Matrix
 
 Before deploying, ensure you have gathered your API keys from each provider. Refer to `deployment.md` for secret specifications.
 
@@ -39,11 +39,12 @@ Before deploying, ensure you have gathered your API keys from each provider. Ref
 | `GROQ_API_KEY` | Backend | Ultra-fast Llama 3 LLM inference key | [Groq Console](https://console.groq.com/) |
 | `AICREDITS_API_KEY` | Backend | BAAI/BGE-M3 vector embeddings key | AI Credits Provider |
 | `ELEVENLABS_API_KEY` | Backend | Text-to-Speech (TTS) voice generation key | [ElevenLabs Console](https://elevenlabs.io/) |
+| `ALLOWED_ORIGINS` | Backend | Allowed CORS origins (e.g. `*` or `https://my-app.vercel.app`) | Render / Koyeb Environment Settings |
 | `VITE_API_BASE_URL` | Frontend | Backend production HTTP/HTTPS URL (e.g., `https://voice-agent-backend.onrender.com`) | Render / Koyeb Dashboard |
 
 ---
 
-## ??? Step-by-Step Deployment Instructions
+## 📋 Step-by-Step Deployment Instructions
 
 ### Phase 1: Free Database Setup (MongoDB Atlas M0 Cluster)
 
@@ -93,6 +94,16 @@ Before deploying, ensure you have gathered your API keys from each provider. Ref
 
 #### Method A: Render (Free Web Service)
 
+#### Option A: Render 1-Click Blueprint (Recommended)
+
+1. Sign up / log in to [Render.com](https://render.com/).
+2. Click **New + -> Blueprint**.
+3. Connect your GitHub repository `Shivanshvyas1729/Real-Time-Voice-AI-Agent-with-RAG`. Render will automatically detect `render.yaml`.
+4. Fill in the required environment variables (`MONGO_URL`, `DEEPGRAM_API_KEY`, `GROQ_API_KEY`, etc.) in the dashboard prompt.
+5. Click **Apply**.
+
+#### Option B: Manual Render Web Service Setup
+
 1. Sign up / log in to [Render.com](https://render.com/).
 2. Click **New + -> Web Service**.
 3. Connect your GitHub repository `Shivanshvyas1729/Real-Time-Voice-AI-Agent-with-RAG`.
@@ -140,7 +151,7 @@ Before deploying, ensure you have gathered your API keys from each provider. Ref
 
 ---
 
-## ?? Troubleshooting & Free-Tier Gotchas
+## 🛠️ Troubleshooting & Free-Tier Gotchas
 
 1. **Render Free Tier Cold Starts**:
    * Render free services sleep after 15 minutes of inactivity. The first request after a sleep period may take 30-50 seconds to boot up.
@@ -151,7 +162,7 @@ Before deploying, ensure you have gathered your API keys from each provider. Ref
 
 ---
 
-## ?? Summary Matrix
+## 📊 Summary Matrix
 
 | Service | Component | Free Allowance | URL Example |
 | :--- | :--- | :--- | :--- |
