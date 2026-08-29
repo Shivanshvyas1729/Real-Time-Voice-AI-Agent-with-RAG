@@ -1,6 +1,6 @@
 
 # 🎙️ Voice AI Agent Architecture & Engineering Guide
-wsl-> https://github.com/Shivanshvyas1729/pydantic_notes/blob/main/wsl.md
+
 [![Pipecat](https://img.shields.io/badge/Pipeline-Pipecat_AI-orange?style=for-the-badge&logo=python&logoColor=white)](https://pipecat.ai/)
 [![WebRTC](https://img.shields.io/badge/Transport-WebRTC_Realtime-333333?style=for-the-badge&logo=webrtc&logoColor=white)](https://webrtc.org/)
 [![STT/TTS](https://img.shields.io/badge/Audio-Streaming_Frames-blueviolet?style=for-the-badge)](https://github.com/pipecat-ai/pipecat)
@@ -9,7 +9,7 @@ wsl-> https://github.com/Shivanshvyas1729/pydantic_notes/blob/main/wsl.md
 > **System Overview**: High-performance, low-latency streaming pipeline architecture for conversational Voice AI agents built with **Pipecat**, **WebRTC**, frame processors, and real-time turn-taking models.
 
 ---
-
+wsl-> https://github.com/Shivanshvyas1729/pydantic_notes/blob/main/wsl.md
 ## 📌 Table of Contents
 
 1. [🎙️ 1. The Basic Flow of a Voice AI Agent](#1-the-basic-flow-of-a-voice-ai-agent)
