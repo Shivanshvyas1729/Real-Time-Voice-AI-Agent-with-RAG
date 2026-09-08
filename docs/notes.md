@@ -105,6 +105,7 @@ Configured on MongoDB Atlas Vector Search for the `document_chunks` collection:
   ]
 }
 ```
+![Uploading image.png…]()
 
 ### Async Database Connection Handler (`app/database.py`)
 
