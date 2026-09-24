@@ -1,11 +1,5 @@
-from typing import Optional 
+from typing import Any, Dict, Optional 
 from pydantic import BaseModel, Field 
-
-
-
-# Step 1: What does the AI read?       ➡️ Create ChunkContent (text + file_name)
-# Step 2: What does the Database track? ➡️ Create ChunkMetadata (IDs + scores)
-# Step 3: Put them in an envelope!      ➡️ Create RetrievalResult (data + metadata)
 
 
 class ChunkContent(BaseModel):
@@ -37,6 +31,7 @@ class RetrievalMetadata(BaseModel):
     equipment_id: Optional[str] = Field(None, description="Equipment filter applied")
     tenant_id: Optional[str] = Field(None, description="Tenant filter applied")
     chunks: list[ChunkMetadata] = Field(default_factory=list, description="Metadata for each retrieved chunk")
+    diagnostics: Optional[Dict[str, Any]] = Field(default=None, description="Detailed diagnostic telemetry showing candidate pool sizes, database status, and hints")
 
 
 class RetrievalResult(BaseModel):

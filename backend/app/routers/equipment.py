@@ -22,6 +22,10 @@ from app.database import get_database
 from app.models.equipment import Equipment
 from app.models.document import Document
 from app.config import settings
+from app.models.rag import RetrievalResult
+from app.services.rag import RAGService
+
+
 
 router = APIRouter()
 
@@ -421,3 +425,110 @@ async def list_equipment_documents(equipment_id: str):
     documents = [_serialize_document(doc) for doc in documents]
 
     return {"documents": documents, "count": len(documents)}
+
+
+
+@router.get("/{equipment_id}/search", response_model=RetrievalResult, status_code=status.HTTP_200_OK)
+async def search_equipment_knowledge_base(
+    equipment_id: str,
+    query: str,
+    k: int = 5,
+    tenant_id: Optional[str] = None,
+):
+    """
+    Search knowledge base documents for a specific equipment item using hybrid RAG and RRF.
+    Includes automated tenant resolution, validation, and diagnostic error reporting.
+    """
+    clean_query = (query or "").strip()
+    if not clean_query:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={"error": "EmptyQueryError", "message": "Search query cannot be empty or whitespace."}
+        )
+
+    db = get_database()
+    if db is None:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail={"error": "DatabaseUnavailable", "message": "MongoDB database connection is not initialized."}
+        )
+
+    # 1. Validate equipment exists
+    obj_id = parse_object_id(equipment_id)
+    equipment = await db.equipment.find_one({"_id": obj_id})
+    if not equipment:
+        available_equip = await db.equipment.find({}, {"_id": 1, "name": 1, "tenant_id": 1}).to_list(length=10)
+        formatted = [{"id": str(e["_id"]), "name": e.get("name"), "tenant_id": e.get("tenant_id")} for e in available_equip]
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail={
+                "error": "EquipmentNotFound",
+                "message": f"Equipment '{equipment_id}' does not exist in the database.",
+                "available_equipment": formatted
+            }
+        )
+
+    # 2. Check tenant alignment & auto-resolve if missing
+    actual_tenant = equipment.get("tenant_id")
+    cleaned_tenant = tenant_id.strip() if tenant_id and tenant_id.strip() else None
+
+    if not cleaned_tenant:
+        resolved_tenant = actual_tenant
+        logger.info(f"Auto-resolved tenant_id='{resolved_tenant}' for equipment '{equipment.get('name')}'")
+    elif cleaned_tenant != actual_tenant:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={
+                "error": "TenantMismatchError",
+                "message": (
+                    f"Tenant mismatch: Equipment '{equipment.get('name')}' (ID: {equipment_id}) "
+                    f"belongs to tenant '{actual_tenant}', but you searched with tenant_id='{cleaned_tenant}'. "
+                    f"MongoDB isolates chunks by tenant, so this search would match 0 documents."
+                ),
+                "solution": f"Change tenant_id to '{actual_tenant}' or leave tenant_id empty to auto-detect."
+            }
+        )
+    else:
+        resolved_tenant = cleaned_tenant
+
+    # 3. Check if equipment has document chunks in MongoDB
+    chunk_count = await db.document_chunks.count_documents({
+        "equipment_id": obj_id,
+        "is_disabled": {"$ne": True}
+    })
+    if chunk_count == 0:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail={
+                "error": "NoDocumentsFound",
+                "equipment_id": equipment_id,
+                "equipment_name": equipment.get("name"),
+                "message": f"Equipment '{equipment.get('name')}' has 0 knowledge base document chunks in MongoDB.",
+                "solution": f"Upload a PDF or document first via POST /api/v1/equipment/{equipment_id}/documents"
+            }
+        )
+
+    # 4. Execute Hybrid Retrieval with RRF
+    rag_service = RAGService()
+    try:
+        results = await rag_service.retrieve(
+            query=clean_query,
+            k=k,
+            equipment_id=equipment_id,
+            tenant_id=resolved_tenant,
+        )
+        return results
+    except HTTPException:
+        raise
+    except ValueError as ve:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail={"error": "ValueError", "message": str(ve)})
+    except Exception as e:
+        logger.error(f"Search endpoint error: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail={
+                "error": type(e).__name__,
+                "message": str(e),
+                "solution": "Check MongoDB Atlas vector search index and text index status."
+            }
+        )

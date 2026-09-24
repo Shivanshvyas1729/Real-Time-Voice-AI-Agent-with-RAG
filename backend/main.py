@@ -9,6 +9,7 @@ import os
 from app.database import connect_to_mongo, close_mongo_connection
 from app.routers import equipment
 from app.routers import stream
+from app.routers import tenants
 
 logger.remove()
 logger.add(sys.stdout, colorize=True, format="<green>{time:YYYY-MM-DD HH:mm:ss}</green> | <level>{level: <8}</level> | <cyan>{name}</cyan>:<cyan>{function}</cyan> - <level>{message}</level>")
@@ -106,6 +107,7 @@ app.add_middleware(
 
 app.include_router(equipment.router, prefix="/api/v1/equipment", tags=["Equipment"])
 app.include_router(stream.router, prefix="/api/v1/stream", tags=["Stream"])
+app.include_router(tenants.router, prefix="/api/v1/tenants", tags=["Tenants"])
 
 @app.get("/")
 def read_root():

@@ -8,7 +8,7 @@ echo =================================================================
 echo.
 
 echo [1/2] Starting Backend FastAPI Server on http://localhost:8000...
-start "Voice Agent - Backend API" cmd /k "wsl -d Ubuntu --cd /home/dell/voice-agent /home/dell/.local/bin/uv run --project backend uvicorn main:app --reload --host 0.0.0.0 --port 8000"
+start "Voice Agent - Backend API" cmd /k "wsl -d Ubuntu --cd /home/dell/voice-agent/backend /home/dell/.local/bin/uv run uvicorn main:app --reload --host 0.0.0.0 --port 8000"
 
 echo [2/2] Starting Frontend Vite App on http://localhost:5173...
 start "Voice Agent - Frontend UI" cmd /k "wsl -d Ubuntu --cd /home/dell/voice-agent/frontend npm run dev"

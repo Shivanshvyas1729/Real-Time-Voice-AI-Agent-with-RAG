@@ -7,13 +7,14 @@ import {
   PipecatClientAudio,
 } from "@pipecat-ai/client-react";
 import { RTVIEvent, TransportStateEnum } from "@pipecat-ai/client-js";
-import { Play, StopCircle, Mic, MicOff, Send, Bot, ChevronDown } from "lucide-react";
+import { Play, StopCircle, Mic, MicOff, Send, Bot, Shield } from "lucide-react";
 import { ChatMessage } from "@/types/ChatMessage";
 import { ChunkMetadata } from "@/types/Chunk";
 import { getId } from "@/utils/chat";
 import BotMessageBubble from "./BotMessageBubble";
 import UserMessageBubble from "./UserMessageBubble";
 import usePipecatChatEvents from "@/hooks/pipecat-chat-events";
+import AdminModal from "./AdminModal";
 import api from "../utils/api";
 
 interface RealTimeChatPanelProps {
@@ -33,6 +34,7 @@ export default function RealTimeChatPanel({
   const [chunksMetadata, setChunksMetadata] = useState<{ [key: string]: ChunkMetadata }>({});
   const [equipmentList, setEquipmentList] = useState<any[]>([]);
   const [selectedEqId, setSelectedEqId] = useState<string>(equipmentId || "");
+  const [isAdminOpen, setIsAdminOpen] = useState<boolean>(false);
 
   const listRef = useRef<HTMLDivElement>(null);
   const endRef = useRef<HTMLDivElement>(null);
@@ -40,25 +42,25 @@ export default function RealTimeChatPanel({
   // Subscribe to Pipecat chat events
   usePipecatChatEvents(setMessages, setChunksMetadata);
 
+  // Function to load/reload equipment
+  const loadEquipment = async () => {
+    try {
+      const response = await api.get("/equipment/");
+      const data = Array.isArray(response.data) ? response.data : [];
+      setEquipmentList(data);
+      if (data.length > 0 && !selectedEqId) {
+        const firstItem = data[0];
+        setSelectedEqId(firstItem._id);
+        onEquipmentChange?.(firstItem._id);
+      }
+    } catch (error) {
+      console.error("Failed to load equipment:", error);
+      setEquipmentList([]);
+    }
+  };
+
   // Load equipment on mount
   useEffect(() => {
-    const loadEquipment = async () => {
-      try {
-        const response = await api.get("/equipment/");
-        // Ensure response.data is an array
-        const data = Array.isArray(response.data) ? response.data : [];
-        setEquipmentList(data);
-        if (data.length > 0 && !selectedEqId) {
-          const firstItem = data[0];
-          setSelectedEqId(firstItem._id);
-          onEquipmentChange?.(firstItem._id);
-        }
-      } catch (error) {
-        console.error("Failed to load equipment:", error);
-        // Ensure equipmentList is always an array even on error
-        setEquipmentList([]);
-      }
-    };
     loadEquipment();
   }, []);
 
@@ -71,13 +73,10 @@ export default function RealTimeChatPanel({
 
   const isConnecting =
     transportState === TransportStateEnum.CONNECTING || transportState === TransportStateEnum.AUTHENTICATING;
-  // Check for READY state, but also allow CONNECTED as a fallback
-  // Also check if we're in a state where the connection is established (even if not READY yet)
   const isConnected =
     transportState === TransportStateEnum.READY ||
     transportState === TransportStateEnum.CONNECTED;
 
-  // Track if we've ever been connected (to show mic toggle even if state temporarily changes)
   const [hasBeenConnected, setHasBeenConnected] = useState(false);
 
   useEffect(() => {
@@ -88,7 +87,6 @@ export default function RealTimeChatPanel({
     }
   }, [isConnected, transportState]);
 
-  // Log transport state changes for debugging
   useEffect(() => {
     console.log("Transport state changed:", transportState);
     console.log("isConnecting:", isConnecting, "isConnected:", isConnected);
@@ -121,12 +119,10 @@ export default function RealTimeChatPanel({
       return;
     }
 
-    // Check if already connected or connecting, disconnect first
     if (transportState !== TransportStateEnum.DISCONNECTED && transportState !== TransportStateEnum.DISCONNECTING) {
       console.log("Client already connected/connecting, disconnecting first...");
       try {
         await handleDisconnect();
-        // Wait a bit for disconnect to complete
         await new Promise(resolve => setTimeout(resolve, 1000));
       } catch (error) {
         console.error("Error during disconnect before reconnect:", error);
@@ -151,42 +147,24 @@ export default function RealTimeChatPanel({
       if (!client) {
         throw new Error("Pipecat client not initialized");
       }
-      // Verify we have a ws_url
       if (!response.data?.ws_url) {
         throw new Error("No ws_url in connection response");
       }
 
-      // Wrap connect in try-catch to handle any initialization errors
       try {
         console.log("Calling client.connect() with:", response.data);
         const connectResult = await client.connect(response.data);
         console.log("Client.connect() completed, result:", connectResult);
-        console.log("Client.connect() called, waiting for transport state update...");
       } catch (connectError: any) {
         console.error("❌ Error during client.connect():", connectError);
-        console.error("Error details:", {
-          message: connectError?.message,
-          stack: connectError?.stack,
-          name: connectError?.name,
-          toString: connectError?.toString()
-        });
-
-        // Handle specific errors like enumerateDevices
         if (connectError?.message?.includes("enumerateDevices") ||
           connectError?.toString().includes("enumerateDevices")) {
-          console.warn("⚠️ Microphone access error (this is expected if not using HTTPS or microphone not available):", connectError);
-          // Try to connect anyway - the client might still work without microphone
-          // The error might be non-fatal
-          console.log("Attempting to continue connection despite microphone error...");
+          console.warn("⚠️ Microphone access error (expected if not using HTTPS or mic not available):", connectError);
         } else {
-          // Log the error but don't throw - let the connection attempt continue
           console.error("Connection error (non-fatal, continuing):", connectError);
         }
       }
 
-      // Give the client a moment to establish the connection and update state
-      // The transport state should transition: CONNECTING -> READY
-      // If it doesn't transition within 5 seconds, log a warning
       setTimeout(() => {
         const currentState = transportState;
         console.log("Transport state after 5 seconds:", currentState);
@@ -199,11 +177,6 @@ export default function RealTimeChatPanel({
     } catch (error: any) {
       console.error("Failed to connect:", error);
       const errorMessage = error?.response?.data?.detail || error?.message || "Unknown error";
-      console.error("Error details:", {
-        status: error?.response?.status,
-        data: error?.response?.data,
-        message: error?.message
-      });
       alert(`Connection Error: ${errorMessage}`);
     }
   };
@@ -216,10 +189,9 @@ export default function RealTimeChatPanel({
         return;
       }
       console.log("Disconnecting client...");
-      setHasBeenConnected(false); // Reset connection state
+      setHasBeenConnected(false);
       await client?.disconnect();
       console.log("Client disconnected successfully");
-      // Wait a moment for state to update
       await new Promise(resolve => setTimeout(resolve, 500));
     } catch (error: any) {
       if (
@@ -282,7 +254,7 @@ export default function RealTimeChatPanel({
             ))}
           </select>
 
-          {/* Mic Toggle - Show when connected or has been connected (to handle state transitions) */}
+          {/* Mic Toggle */}
           {(isConnected || hasBeenConnected) && (
             <PipecatClientMicToggle disabled={!isConnected}>
               {({ disabled, isMicEnabled, onClick }) => (
@@ -340,6 +312,16 @@ export default function RealTimeChatPanel({
               </span>
             </div>
           </div>
+
+          {/* Admin Button */}
+          <button
+            onClick={() => setIsAdminOpen(true)}
+            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-slate-200 bg-slate-700/80 hover:bg-slate-700 border border-slate-600 rounded-lg hover:text-white transition-all shadow-sm active:scale-95"
+            title="Open Admin Control Center"
+          >
+            <Shield className="h-3.5 w-3.5 text-blue-400" />
+            <span>Admin</span>
+          </button>
         </div>
       </div>
 
@@ -407,7 +389,21 @@ export default function RealTimeChatPanel({
           </button>
         </div>
       </div>
+
+      {/* Admin Management Modal */}
+      <AdminModal
+        isOpen={isAdminOpen}
+        onClose={() => setIsAdminOpen(false)}
+        equipmentList={equipmentList}
+        selectedEquipmentId={selectedEqId}
+        onEquipmentCreated={(newEq) => {
+          loadEquipment();
+          if (newEq._id) {
+            setSelectedEqId(newEq._id);
+            onEquipmentChange?.(newEq._id);
+          }
+        }}
+      />
     </div>
   );
 }
-

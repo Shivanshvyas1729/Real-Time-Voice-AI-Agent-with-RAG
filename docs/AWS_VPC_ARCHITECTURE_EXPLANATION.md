@@ -35,6 +35,7 @@
    - [Step 6: Configure GitHub Actions CI/CD for Zero-Downtime Deploys](#step-6-configure-github-actions-cicd-for-zero-downtime-deploys)
    - [Step 7: Complete Environment Tear-Down & Cleanup (`destroy-aws.sh`)](#step-7-complete-environment-tear-down--cleanup-destroy-awssh)
 5. [Interview Defense Guide: How to Explain AWS Architecture Confidently](#5-interview-defense-guide-how-to-explain-aws-architecture-confidently)
+6. [Alternative Simple Deployment (EC2 + Docker Compose)](#6-alternative-simple-deployment-ec2--docker-compose)
 
 ---
 
@@ -460,3 +461,61 @@ cd infrastructure
   "Placing container tasks in private subnets without public IP addresses prevents direct internet attacks and unauthorized scanning. External clients can only reach our application through the Application Load Balancer's strict security group rules. Outbound traffic to third-party APIs (like Groq or Deepgram) is routed through a NAT Gateway in the public subnet."
 
 ---
+
+
+# 6. Alternative Simple Deployment (EC2 + Docker Compose)
+
+While the ECS Fargate architecture described above is ideal for production and high availability, you may sometimes want a quick, inexpensive deployment for testing or prototyping. This alternative method runs the existing `docker-compose.yml` on a single AWS EC2 instance.
+
+### Step 1: Launch an EC2 Instance
+1. In the AWS Management Console, navigate to **EC2** -> **Launch instances**.
+2. Select **Ubuntu Server 24.04 LTS** as the AMI.
+3. Choose a **t3.small** or **t3.medium** instance type to ensure sufficient memory for Python and Docker.
+4. Select or create an SSH Key Pair and download it.
+5. In **Network Settings**, allow:
+   - SSH (Port 22) from your IP
+   - HTTP (Port 80)
+   - HTTPS (Port 443)
+6. Ensure at least **20-30 GB** of gp3 storage and launch the instance.
+
+### Step 2: Configure Security Groups for Ports
+Your `docker-compose.yml` exposes ports `3000` (frontend) and `8000` (backend).
+1. Go to the Security Group attached to your new EC2 instance.
+2. Add Inbound Rules:
+   - **Custom TCP** | Port `3000` | Source `0.0.0.0/0`
+   - **Custom TCP** | Port `8000` | Source `0.0.0.0/0`
+
+### Step 3: Connect and Install Docker
+SSH into your instance using your key:
+```bash
+chmod 400 your-key.pem
+ssh -i "your-key.pem" ubuntu@<your-ec2-public-ip>
+```
+
+Install Docker and Docker Compose:
+```bash
+sudo apt update && sudo apt upgrade -y
+sudo apt install docker.io docker-compose-v2 -y
+sudo usermod -aG docker $USER
+```
+*(Log out and SSH back in for group changes to take effect).*
+
+### Step 4: Deploy the Application
+1. Clone your repository onto the server.
+2. Create the environment file:
+   ```bash
+   cd voice-agent/backend
+   cp .env.example .env
+   nano .env # Add your API keys here
+   ```
+3. Build and run the containers:
+   ```bash
+   cd ..
+   docker compose up -d --build
+   ```
+
+### Step 5: Access the Application
+- **Frontend App**: `http://<your-ec2-public-ip>:3000`
+- **Backend API Docs**: `http://<your-ec2-public-ip>:8000/docs`
+
+> **Note on WebRTC (Microphone Access)**: Modern browsers block microphone access over plain HTTP. For full frontend functionality, you must configure a domain name, point it to your EC2 instance, and set up a reverse proxy (like Nginx) with an SSL certificate (e.g., Let's Encrypt).

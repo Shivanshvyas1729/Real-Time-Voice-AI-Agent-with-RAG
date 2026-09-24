@@ -1811,3 +1811,33 @@ Docker uses the formula: `HOST_PORT:CONTAINER_PORT`
 | :--- | :--- |
 | **Host .venv conflict / Unhealthy Backend** | Run `docker compose down -v` to wipe cached anonymous volumes, then `docker compose up`. |
 | **Code changes not updating** | Ensure bind mounts - `./backend:/app` are configured in `docker-compose.yml`. |
+
+
+---
+
+## MongoDB Vector Index Schema
+
+```json
+{
+  "fields": [
+    {
+      "numDimensions": 1024,
+      "path": "embedding",
+      "similarity": "cosine",
+      "type": "vector"
+    },
+    {
+      "path": "equipment_id",
+      "type": "filter"
+    },
+    {
+      "path": "tenant_id",
+      "type": "filter"
+    },
+    {
+      "path": "is_disabled",
+      "type": "filter"
+    }
+  ]
+}
+```
