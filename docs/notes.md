@@ -1168,15 +1168,6 @@ class RAGService:
 
 ### 🚀 Alternative Free-Tier Deployment (Vercel, Render, Koyeb)
 
-If you prefer to deploy for **100% FREE** without AWS charges:
-* **Frontend**: Deploy `frontend/` on [Vercel](https://vercel.com) (Vite + React).
-* **Backend**: Deploy `backend/` on [Render](https://render.com) or [Koyeb](https://koyeb.com) (FastAPI + WebSockets).
-* **Database**: Host on [MongoDB Atlas](https://mongodb.com) (M0 Free Vector Search Cluster).
-
-👉 **For the complete step-by-step guide, see [FREE_TIER_DEPLOYMENT_GUIDE.md](FREE_TIER_DEPLOYMENT_GUIDE.md).**
-
-
-
 ### Official Documentation Links
 - [MongoDB Atlas Vector Search Documentation](https://www.mongodb.com/docs/atlas/atlas-vector-search/vector-search-stage/)
 - [Pydantic v2 Documentation](https://docs.pydantic.dev/latest/)
@@ -1200,7 +1191,6 @@ The table below maps all key technical documentation files available in the repo
 | Reference File | Description & Technical Scope |
 | :--- | :--- |
 | **[`DATABASE_SCHEMA_AND_MODELS.md`](DATABASE_SCHEMA_AND_MODELS.md)** | Technical specification for MongoDB schemas, Pydantic v2 domain models (`Equipment`, `Document`, `RAG`), BSON ObjectId custom serializers, and multi-tenancy rules. |
-| **[`FREE_TIER_DEPLOYMENT_GUIDE.md`](FREE_TIER_DEPLOYMENT_GUIDE.md)** | Step-by-step 100% free production deployment guide covering Vercel (Frontend), Render / Koyeb (FastAPI Backend), and MongoDB Atlas M0 Cluster (Vector Search). |
 | **[`AWS_VPC_ARCHITECTURE_EXPLANATION.md`](AWS_VPC_ARCHITECTURE_EXPLANATION.md)** | In-depth technical breakdown of the production AWS Cloud VPC, Public/Private subnets, Application Load Balancer (ALB) ingress, and NAT Gateway egress routing. |
 | **[`deployment.md`](deployment.md)** | Complete AWS production deployment guide covering AWS ECS Fargate, CloudFormation IaC infrastructure, ECR container push scripts, and GitHub Actions CI/CD workflows. |
 | **[`notes.md`](notes.md)** | Comprehensive developer progress notes, technical architectural deep dives, Pipecat framework concepts, and copy-paste code blueprints. |

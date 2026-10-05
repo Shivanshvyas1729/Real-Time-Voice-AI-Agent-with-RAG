@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+﻿import { useState, useEffect, useRef } from "react";
 import {
   usePipecatClient,
   usePipecatClientTransportState,
@@ -6,13 +6,14 @@ import {
   PipecatClientMicToggle,
   PipecatClientAudio,
 } from "@pipecat-ai/client-react";
-import { RTVIEvent, TransportStateEnum } from "@pipecat-ai/client-js";
+import { RTVIEvent, TransportStateEnum, PipecatMetricsData } from "@pipecat-ai/client-js";
 import { Play, StopCircle, Mic, MicOff, Send, Bot, Shield } from "lucide-react";
 import { ChatMessage } from "@/types/ChatMessage";
 import { ChunkMetadata } from "@/types/Chunk";
 import { getId } from "@/utils/chat";
 import BotMessageBubble from "./BotMessageBubble";
 import UserMessageBubble from "./UserMessageBubble";
+import LiveTelemetryBar from "./LiveTelemetryBar";
 import usePipecatChatEvents from "@/hooks/pipecat-chat-events";
 import AdminModal from "./AdminModal";
 import api from "../utils/api";
@@ -35,12 +36,13 @@ export default function RealTimeChatPanel({
   const [equipmentList, setEquipmentList] = useState<any[]>([]);
   const [selectedEqId, setSelectedEqId] = useState<string>(equipmentId || "");
   const [isAdminOpen, setIsAdminOpen] = useState<boolean>(false);
+  const [liveMetrics, setLiveMetrics] = useState<PipecatMetricsData | null>(null);
 
   const listRef = useRef<HTMLDivElement>(null);
   const endRef = useRef<HTMLDivElement>(null);
 
-  // Subscribe to Pipecat chat events
-  usePipecatChatEvents(setMessages, setChunksMetadata);
+  // Subscribe to Pipecat chat events & telemetry metrics
+  usePipecatChatEvents(setMessages, setChunksMetadata, setLiveMetrics);
 
   // Function to load/reload equipment
   const loadEquipment = async () => {
@@ -183,6 +185,7 @@ export default function RealTimeChatPanel({
 
   const handleDisconnect = async () => {
     try {
+      setLiveMetrics(null);
       if (transportState === TransportStateEnum.DISCONNECTED || transportState === TransportStateEnum.DISCONNECTING) {
         console.log("Already disconnected or disconnecting");
         setHasBeenConnected(false);
@@ -220,6 +223,8 @@ export default function RealTimeChatPanel({
     ]);
     setText("");
   };
+
+  const isStreamingBot = messages.some((m) => m.role === "bot" && m.streaming);
 
   return (
     <div className="h-full flex flex-col bg-slate-900 text-slate-200">
@@ -329,6 +334,13 @@ export default function RealTimeChatPanel({
       <div className="hidden">
         <PipecatClientAudio />
       </div>
+
+      {/* Live Pipecat Pipeline Telemetry Bar */}
+      <LiveTelemetryBar
+        metrics={liveMetrics}
+        isConnected={isConnected}
+        isStreaming={isStreamingBot}
+      />
 
       {/* Chat Messages */}
       <div

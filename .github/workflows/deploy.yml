@@ -41,6 +41,65 @@ jobs:
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
 
+      - name: Get AWS Account ID and Render Task Definitions
+        run: |
+          ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
+          echo "Using AWS Account ID: $ACCOUNT_ID"
+          sed "s/\${AWS_ACCOUNT_ID}/$ACCOUNT_ID/g; s/\${AWS_REGION}/${{ env.AWS_REGION }}/g" \
+            .github/workflows/task-definition-backend.json.template > .github/workflows/task-definition-backend.json
+          sed "s/\${AWS_ACCOUNT_ID}/$ACCOUNT_ID/g; s/\${AWS_REGION}/${{ env.AWS_REGION }}/g" \
+            .github/workflows/task-definition-frontend.json.template > .github/workflows/task-definition-frontend.json
+
+      - name: Ensure ECS Services Exist
+        run: |
+          STACK_NAME="rag-voice-agent-stack"
+          get_output() {
+            aws cloudformation describe-stacks \
+              --stack-name "$STACK_NAME" \
+              --region "${{ env.AWS_REGION }}" \
+              --query "Stacks[0].Outputs[?OutputKey=='$1'].OutputValue" \
+              --output text
+          }
+          PRIVATE_SUBNET_1=$(get_output PrivateSubnet1)
+          PRIVATE_SUBNET_2=$(get_output PrivateSubnet2)
+          BACKEND_SG=$(get_output BackendSecurityGroup)
+          FRONTEND_SG=$(get_output FrontendSecurityGroup)
+          BACKEND_TG_ARN=$(get_output BackendTargetGroupArn)
+          FRONTEND_TG_ARN=$(get_output FrontendTargetGroupArn)
+
+          # Ensure Service-Linked Role exists
+          aws iam create-service-linked-role --aws-service-name ecs.amazonaws.com 2>/dev/null || true
+
+          # Create Backend Service if missing
+          if ! aws ecs describe-services --cluster "${{ env.ECS_CLUSTER }}" --services "${{ env.ECS_SERVICE_BACKEND }}" --region "${{ env.AWS_REGION }}" --query "services[?status=='ACTIVE'].serviceName" --output text | grep -q "${{ env.ECS_SERVICE_BACKEND }}"; then
+            echo "Initial Backend Service setup..."
+            aws ecs register-task-definition --cli-input-json file://${{ env.ECS_TASK_DEFINITION_BACKEND }} --region "${{ env.AWS_REGION }}"
+            aws ecs create-service \
+              --cluster "${{ env.ECS_CLUSTER }}" \
+              --service-name "${{ env.ECS_SERVICE_BACKEND }}" \
+              --task-definition "rag-voice-agent-backend-td" \
+              --desired-count 1 \
+              --launch-type FARGATE \
+              --network-configuration "awsvpcConfiguration={subnets=[$PRIVATE_SUBNET_1,$PRIVATE_SUBNET_2],securityGroups=[$BACKEND_SG],assignPublicIp=DISABLED}" \
+              --load-balancers "targetGroupArn=$BACKEND_TG_ARN,containerName=${{ env.CONTAINER_NAME_BACKEND }},containerPort=8000" \
+              --region "${{ env.AWS_REGION }}"
+          fi
+
+          # Create Frontend Service if missing
+          if ! aws ecs describe-services --cluster "${{ env.ECS_CLUSTER }}" --services "${{ env.ECS_SERVICE_FRONTEND }}" --region "${{ env.AWS_REGION }}" --query "services[?status=='ACTIVE'].serviceName" --output text | grep -q "${{ env.ECS_SERVICE_FRONTEND }}"; then
+            echo "Initial Frontend Service setup..."
+            aws ecs register-task-definition --cli-input-json file://${{ env.ECS_TASK_DEFINITION_FRONTEND }} --region "${{ env.AWS_REGION }}"
+            aws ecs create-service \
+              --cluster "${{ env.ECS_CLUSTER }}" \
+              --service-name "${{ env.ECS_SERVICE_FRONTEND }}" \
+              --task-definition "rag-voice-agent-frontend-td" \
+              --desired-count 1 \
+              --launch-type FARGATE \
+              --network-configuration "awsvpcConfiguration={subnets=[$PRIVATE_SUBNET_1,$PRIVATE_SUBNET_2],securityGroups=[$FRONTEND_SG],assignPublicIp=DISABLED}" \
+              --load-balancers "targetGroupArn=$FRONTEND_TG_ARN,containerName=${{ env.CONTAINER_NAME_FRONTEND }},containerPort=80" \
+              --region "${{ env.AWS_REGION }}"
+          fi
+
       # ------------------------------------------------------------------
       # Build and Push Backend
       # ------------------------------------------------------------------

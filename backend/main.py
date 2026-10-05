@@ -89,9 +89,9 @@ else:
     ]
 
 if not allowed_origins_env:
-    # Default to wildcard or local/vercel origins if ALLOWED_ORIGINS env var is not specified
+    # Default to wildcard or local origins if ALLOWED_ORIGINS env var is not specified
     origins = ["*"]
-    logger.info("CORS configured to allow all origins ('*') for free-tier deployment")
+    logger.info("CORS configured to allow all origins ('*')")
 else:
     logger.info(f"CORS configured with specified origins: {origins}")
 

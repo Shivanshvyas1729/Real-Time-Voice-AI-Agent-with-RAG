@@ -1,4 +1,4 @@
-import { useRef } from "react";
+﻿import { useRef } from "react";
 import { ChatMessage } from "@/types/ChatMessage";
 import { ChunkMetadata } from "@/types/Chunk";
 import { ServerMessage } from "@/types/ServerMessage";
@@ -9,35 +9,15 @@ import { useRTVIClientEvent } from "@pipecat-ai/client-react";
 export default function usePipecatChatEvents(
   setMessages: React.Dispatch<React.SetStateAction<ChatMessage[]>>,
   setChunksMetadata: React.Dispatch<React.SetStateAction<{ [key: string]: ChunkMetadata }>>,
+  setLiveMetrics?: React.Dispatch<React.SetStateAction<PipecatMetricsData | null>>,
 ) {
   const currentStreamingBotMessageIdRef = useRef<string | null>(null);
   const pendingCitationsRef = useRef<ChunkMetadata[]>([]);
 
-  // Bot LLM started
-  useRTVIClientEvent(RTVIEvent.BotLlmStarted, () => {
-    console.log("BotLlmStarted");
-    setMessages((prev) => {
-      const next = [...prev];
-      const lastBotMsgIndex = next
-        .slice()
-        .reverse()
-        .findIndex((m) => m.role === "bot");
-      const actualIndex = lastBotMsgIndex >= 0 ? next.length - 1 - lastBotMsgIndex : -1;
-
-      if (actualIndex >= 0 && next[actualIndex].streaming) {
-        currentStreamingBotMessageIdRef.current = next[actualIndex].id;
-      } else {
-        currentStreamingBotMessageIdRef.current = null;
-      }
-
-      return next;
-    });
-  });
-
-  // Update ServerMessage handler:
+  // Server messages (RAG results)
   useRTVIClientEvent(RTVIEvent.ServerMessage, (data: ServerMessage) => {
     if (data.type === "search_knowledge_base") {
-      const newChunks = data.chunks?.map(c => c.metadata) || [];
+      const newChunks = data.chunks?.map((c) => c.metadata) || [];
       // Add to global metadata map
       setChunksMetadata((prev) => ({
         ...prev,
@@ -85,17 +65,20 @@ export default function usePipecatChatEvents(
         .findIndex((m) => {
           if (m.role !== "user" || m.user_id) return false;
 
-          const msgTime = typeof m.timestamp === "string"
-            ? new Date(m.timestamp).getTime()
-            : m.timestamp?.getTime() || 0;
+          const msgTime =
+            typeof m.timestamp === "string"
+              ? new Date(m.timestamp).getTime()
+              : m.timestamp?.getTime() || 0;
           const timeDiff = now - msgTime;
           if (timeDiff > 5000) return false;
 
           const msgContent = m.content.trim().toLowerCase();
           const transcriptContent = content.toLowerCase();
-          return msgContent === transcriptContent ||
+          return (
+            msgContent === transcriptContent ||
             transcriptContent.includes(msgContent) ||
-            msgContent.includes(transcriptContent);
+            msgContent.includes(transcriptContent)
+          );
         });
       const recentIndex = recentMsgIndex >= 0 ? next.length - 1 - recentMsgIndex : -1;
 
@@ -167,8 +150,6 @@ export default function usePipecatChatEvents(
       } else {
         const newMessageId = getId();
         const citations = pendingCitationsRef.current;
-        // Do NOT clear pendingCitationsRef here to avoid Strict Mode side-effect issues.
-        // It will be cleared in BotLlmStopped.
 
         next.push({
           id: newMessageId,
@@ -203,36 +184,43 @@ export default function usePipecatChatEvents(
         };
       }
       currentStreamingBotMessageIdRef.current = null;
-      pendingCitationsRef.current = []; // Clear citations after message is done
+      pendingCitationsRef.current = [];
       return next;
     });
   });
 
-  // Server messages (RAG results)
-  useRTVIClientEvent(RTVIEvent.ServerMessage, (data: ServerMessage) => {
-    if (data.type === "search_knowledge_base") {
-      setChunksMetadata((prev) => ({
-        ...prev,
-        ...data.chunks?.reduce((acc, chunk) => {
-          acc[chunk.metadata.chunk_id] = chunk.metadata;
-          return acc;
-        }, {} as { [key: string]: ChunkMetadata }) || {},
+  // Metrics (TTFB, processing latency, tokens/characters)
+  useRTVIClientEvent(RTVIEvent.Metrics, (data: PipecatMetricsData) => {
+    console.log("⚡ Received Pipecat metrics event:", data);
+
+    // 1. Update live telemetry HUD state
+    if (setLiveMetrics) {
+      setLiveMetrics((prev) => ({
+        processing: [...(prev?.processing || []), ...(data.processing || [])],
+        ttfb: [...(prev?.ttfb || []), ...(data.ttfb || [])],
+        characters: [...(prev?.characters || []), ...(data.characters || [])],
       }));
     }
-  });
 
-  // Metrics
-  useRTVIClientEvent(RTVIEvent.Metrics, (data: PipecatMetricsData) => {
-    const currentMessageId = currentStreamingBotMessageIdRef.current;
-
-    if (!currentMessageId) return;
-
+    // 2. Attach metrics to active or most recent bot message
     setMessages((prev) => {
       const next = [...prev];
-      const messageIndex = next.findIndex((m) => m.id === currentMessageId);
 
-      if (messageIndex >= 0) {
-        const existingMetrics = next[messageIndex].metrics;
+      let targetIndex = -1;
+      if (currentStreamingBotMessageIdRef.current) {
+        targetIndex = next.findIndex((m) => m.id === currentStreamingBotMessageIdRef.current);
+      }
+
+      // If active streaming message is not found, fallback to the last bot message
+      if (targetIndex < 0) {
+        const lastBotIdx = next.slice().reverse().findIndex((m) => m.role === "bot");
+        if (lastBotIdx >= 0) {
+          targetIndex = next.length - 1 - lastBotIdx;
+        }
+      }
+
+      if (targetIndex >= 0) {
+        const existingMetrics = next[targetIndex].metrics;
         const mergedMetrics: PipecatMetricsData = {
           processing: [
             ...(existingMetrics?.processing || []),
@@ -248,8 +236,8 @@ export default function usePipecatChatEvents(
           ],
         };
 
-        next[messageIndex] = {
-          ...next[messageIndex],
+        next[targetIndex] = {
+          ...next[targetIndex],
           metrics: mergedMetrics,
         };
       }
@@ -258,4 +246,3 @@ export default function usePipecatChatEvents(
     });
   });
 }
-

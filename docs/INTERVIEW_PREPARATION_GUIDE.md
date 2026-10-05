@@ -928,11 +928,11 @@ flowchart TD
 
 ---
 
-### Step 9: `infrastructure/cloudformation.yaml` & `setup-aws.sh` (AWS Cloud IaC)
-* **File Paths**: [`infrastructure/cloudformation.yaml`](../infrastructure/cloudformation.yaml), [`infrastructure/setup-aws.sh`](../infrastructure/setup-aws.sh)
+### Step 9: `infrastructure/cloudformation.yaml` & `deploy-aws.sh` (AWS Cloud IaC)
+* **File Paths**: [`infrastructure/cloudformation.yaml`](../infrastructure/cloudformation.yaml), [`deploy-aws.sh`](../infrastructure/setup-aws.sh)
 * **Role in System**: Automated cloud VPC, ALB, ECR, and ECS Fargate infrastructure provisioning.
 * **Key Code**: VPC `10.0.0.0/16`, ALB path rules (`/api/*` $\rightarrow$ Backend TG), `BackendSecurityGroup`, Secrets Manager policies.
-* **Interview Script**: *"For cloud infrastructure, `cloudformation.yaml` provisions a custom VPC with public ALB and private ECS Fargate subnets. `setup-aws.sh` automates Secrets Manager configuration and stack deployment via AWS CLI."*
+* **Interview Script**: *"For cloud infrastructure, `cloudformation.yaml` provisions a custom VPC with public ALB and private ECS Fargate subnets. `deploy-aws.sh` automates Secrets Manager configuration and stack deployment via AWS CLI."*
 
 ---
 
@@ -1438,7 +1438,7 @@ flowchart TD
 2. **Master the Sub-800ms Latency Budget Numbers**:
    - Know each hop by heart: STT (<150ms) + Embedding/Search (<100ms) + Groq TTFT (<150ms) + TTS TTFB (<200ms) + Network/Buffer (<80ms) = **~680ms Total**.
 3. **Be Prepared to Walk Through Code Files Line-by-Line**:
-   - Know the responsibilities of `useVoiceAgent.ts`, `server.py`, `rag.py`, `agent.py`, and `setup-aws.sh`.
+   - Know the responsibilities of `useVoiceAgent.ts`, `server.py`, `rag.py`, `agent.py`, and `deploy-aws.sh`.
 
 ---
 

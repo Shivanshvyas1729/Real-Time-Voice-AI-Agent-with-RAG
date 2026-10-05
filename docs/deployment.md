@@ -1,12 +1,11 @@
-# 🚀 Master Production Deployment Guide: Real-Time Voice AI Agent with RAG
-**Developer**: Shivansh Vyas (`Shivanshvyas1729`)  
+# ?? Master Production Deployment Guide: Real-Time Voice AI Agent with RAG
 **Target Infrastructure**: AWS Cloud (VPC, ALB, ECS Fargate, ECR, Secrets Manager, CloudWatch, GitHub Actions)  
 
-This document is the **definitive end-to-end master deployment guide** for deploying the Real-Time Voice AI Agent and Industrial RAG System to AWS Cloud from scratch.
+This document is the **definitive end-to-end master deployment guide** for deploying the Real-Time Voice AI Agent and Industrial RAG System to AWS Cloud.
 
 ---
 
-# 📌 Architecture Overview
+# ?? Architecture & System Flow
 
 ```mermaid
 graph TB
@@ -15,7 +14,7 @@ graph TB
             IGW["Internet Gateway (IGW)"]
             
             subgraph PublicSubnets["Public Subnets (Subnet 1 & 2)"]
-                ALB["Application Load Balancer (ALB)"]
+                ALB["Application Load Balancer (ALB)<br/>(Idle Timeout: 600s for WebSockets)"]
                 NAT["NAT Gateway (Elastic IP)"]
             end
             
@@ -34,7 +33,7 @@ graph TB
     end
 
     Users(["Internet Users"]) -->|"1. HTTP / HTTPS / WSS"| ALB
-    ALB -->|"2a. Route /api/v1/* & /docs*"| BackendTask
+    ALB -->|"2a. Route /api/v1/*, /docs*, /health*"| BackendTask
     ALB -->|"2b. Route /*"| FrontendTask
     BackendTask -->|"3. Retrieve Secrets on Startup"| Secrets
     ECSCluster -->|"4. Pull Container Images"| ECR_BE
@@ -44,255 +43,205 @@ graph TB
     NAT --> IGW
 ```
 
+### Key Architectural Highlights:
+1. **Network Isolation**: Backend and Frontend containers run inside **Private Subnets** without public IP addresses, protecting them from direct internet exposure.
+2. **WebSocket Support**: The Application Load Balancer has an `idle_timeout` of **600 seconds** (10 minutes) so persistent real-time PCM audio streaming connections are not prematurely terminated.
+3. **Egress Through NAT Gateway**: Containers communicate outbound with Deepgram (STT), Groq (LLM), ElevenLabs (TTS), and MongoDB Atlas via the NAT Gateway in the Public Subnet.
+4. **Secret Injection**: API keys are securely retrieved from **AWS Secrets Manager** at task launch and injected directly as environment variables into the container without ever touching Git.
+
 ---
 
-# 🛠️ Step-by-Step Production Deployment Tutorial
+# ??? Step-by-Step Production Deployment
 
 ---
 
-## Phase 1: Local Prerequisites & AWS CLI Authentication
+## Phase 1: Local Prerequisites
 
-Before executing deployment scripts, ensure your local environment (WSL2 / Linux / macOS) has the necessary tools installed.
+Before deploying, ensure your local environment (WSL2 / Linux / macOS) has the necessary tools installed and authenticated:
 
-### 1. Install Required Tools:
-- **AWS CLI v2**
-- **Docker Desktop**
-- **Git**
-- **Python 3.12**
+### 1. Required Tools:
+- **AWS CLI v2** (`aws --version`)
+- **Docker** with daemon running (`docker info`)
+- **Python 3.10+** (`python3 --version`)
+- **Git** (`git --version`)
 
 ### 2. Authenticate AWS CLI:
-Open your terminal and run `aws configure` to authenticate your terminal session:
+Run `aws configure` in your terminal to set your AWS credentials:
 
 ```bash
 aws configure
 ```
 
-You will be prompted to enter your credentials:
+Provide your credentials:
 ```text
-AWS Access Key ID [None]: AKIAIOSFODNN7EXAMPLE
-AWS Secret Access Key [None]: wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY
+AWS Access Key ID [None]: YOUR_AWS_ACCESS_KEY_ID
+AWS Secret Access Key [None]: YOUR_AWS_SECRET_ACCESS_KEY
 Default region name [None]: us-east-1
 Default output format [None]: json
 ```
 
-### 3. Verify AWS Authentication:
-Run `aws sts get-caller-identity` to verify that your credentials are valid:
-
+Verify your authentication:
 ```bash
 aws sts get-caller-identity
 ```
 
-*Expected Output:*
-```json
-{
-    "UserId": "AIDACKCEVSQ6C2EXAMPLE",
-    "Account": "117591992815",
-    "Arn": "arn:aws:iam::117591992815:user/shivansh"
-}
-```
-
 ---
 
-## Phase 2: Environment Secrets Provisioning (AWS Secrets Manager)
+## Phase 2: One-Command Master Deployment (`./deploy-aws.sh`)
 
-Our FastAPI backend requires sensitive database URLs and API keys. We store them securely in **AWS Secrets Manager** so they are injected directly into ECS Fargate containers at boot time without being hardcoded in Git.
-
-### Option A: Create Secret via CLI
-Run the following AWS CLI command to create the secret JSON payload:
+Instead of jumping between directories and running disjointed commands, the entire launch is fully orchestrated by the root script:
 
 ```bash
-aws secretsmanager create-secret \
-    --name rag-voice-agent-secrets \
-    --region us-east-1 \
-    --description "API keys and MongoDB connection string for Voice AI Agent" \
-    --secret-string '{
-        "MONGO_URL": "mongodb+srv://user:password@cluster.mongodb.net/rag_voice_agent_db?retryWrites=true&w=majority",
-        "DEEPGRAM_API_KEY": "YOUR_DEEPGRAM_API_KEY",
-        "GROQ_API_KEY": "YOUR_GROQ_API_KEY",
-        "AICREDITS_API_KEY": "YOUR_AICREDITS_API_KEY",
-        "ELEVENLABS_API_KEY": "YOUR_ELEVENLABS_API_KEY"
-    }'
+# 1. Ensure scripts are executable
+chmod +x deploy-aws.sh destroy-aws.sh
+
+# 2. Run the end-to-end automated deployment
+./deploy-aws.sh
 ```
 
-### Option B: Interactive Prompt via `setup-aws.sh`
-If you run `./setup-aws.sh` (in Phase 3), the script will automatically check if `rag-voice-agent-secrets` exists. If missing, it will prompt you interactively for each key and create the secret for you.
+### What `./deploy-aws.sh` Does Automatically Under the Hood:
+
+```mermaid
+flowchart TD
+    Step1["1. Pre-flight Check: Validates AWS CLI credentials, Docker daemon, & ECS Service-Linked Role"]
+    Step2["2. Secrets Provisioning: Auto-reads .env or prompts once to populate AWS Secrets Manager"]
+    Step3["3. CloudFormation IaC: Provisions VPC, Subnets, ALB, NAT Gateway, ECR repos, & ECS Cluster"]
+    Step4["4. Docker Build & Push: Builds Backend & Frontend containers (linux/amd64) and pushes to ECR"]
+    Step5["5. Task Definition Registration: Dynamically renders task defs with caller Account ID & registers with ECS"]
+    Step6["6. ECS Service Launch / Update: Creates or rolling-updates Fargate services behind ALB target groups"]
+    Step7["7. Live Health Check: Polls until services are running and outputs the live ALB URLs"]
+
+    Step1 --> Step2 --> Step3 --> Step4 --> Step5 --> Step6 --> Step7
+```
 
 ---
 
-## Phase 3: Infrastructure-as-Code Deployment (`infrastructure/setup-aws.sh`)
+## ? Deployment Modes & Flags
 
-Deploy the entire cloud network topology (VPC, Subnets, ALB, NAT Gateway, ECR Repos, ECS Cluster, IAM Roles) using AWS CloudFormation.
+The unified deployment script supports modular flags for everyday development and operations:
+
+### 1. Fast Application Re-deploy (`--app-only`):
+When you have updated Python backend code or React frontend UI and want to deploy without re-running CloudFormation:
 
 ```bash
-# 1. Navigate to infrastructure directory
-cd /home/dell/voice-agent/infrastructure
-
-# 2. Make scripts executable
-chmod +x setup-aws.sh destroy-aws.sh
-
-# 3. Run the automated CloudFormation setup script
-./setup-aws.sh
+./deploy-aws.sh --app-only
 ```
+*Builds new Docker images, pushes them to ECR, and initiates a zero-downtime rolling update on your active ECS tasks.*
 
-### What `setup-aws.sh` Does Under the Hood:
-1. Executes `aws cloudformation deploy` using `cloudformation.yaml`.
-2. Provisions VPC (`10.0.0.0/16`), 2 Public Subnets, 2 Private Subnets, IGW, NAT Gateway, Security Groups, ALB, Target Groups, ECR Repositories, ECS Cluster, IAM Roles, and CloudWatch Log Groups.
-3. Queries CloudFormation outputs and prints your deployment details:
-   - **ALB DNS Name**: `http://rag-voice-agent-alb-123456789.us-east-1.elb.amazonaws.com`
-   - **Backend ECR URI**: `117591992815.dkr.ecr.us-east-1.amazonaws.com/rag-voice-agent-backend`
-   - **Frontend ECR URI**: `117591992815.dkr.ecr.us-east-1.amazonaws.com/rag-voice-agent-frontend`
-
----
-
-## Phase 4: Build & Push Docker Containers (`scripts/build-and-push-ecr.sh`)
-
-Compile the backend and frontend application source code into Docker container images for `linux/amd64` architecture and push them to Amazon ECR.
+### 2. Infrastructure-Only Provisioning (`--infra-only`):
+When you only want to provision the VPC, Subnets, ALB, and Secrets Manager without compiling or deploying containers:
 
 ```bash
-# 1. Navigate to scripts directory
-cd /home/dell/voice-agent/scripts
-
-# 2. Make scripts executable
-chmod +x build-and-push-ecr.sh create-services.sh deploy_aws.sh
-
-# 3. Run build and push script
-./build-and-push-ecr.sh
+./deploy-aws.sh --infra-only
 ```
 
-### What `build-and-push-ecr.sh` Does Under the Hood:
-1. **ECR Login**: Authenticates Docker CLI against Amazon ECR registry:
-   ```bash
-   aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin <ACCOUNT_ID>.dkr.ecr.us-east-1.amazonaws.com
-   ```
-2. **Backend Image Build**: Compiles Python FastAPI container for `linux/amd64`:
-   ```bash
-   docker build --platform linux/amd64 -t <ACCOUNT_ID>.dkr.ecr.us-east-1.amazonaws.com/rag-voice-agent-backend:latest ./backend
-   ```
-3. **Frontend Image Build**: Compiles Nginx React container for `linux/amd64`:
-   ```bash
-   docker build --platform linux/amd64 -t <ACCOUNT_ID>.dkr.ecr.us-east-1.amazonaws.com/rag-voice-agent-frontend:latest ./frontend
-   ```
-4. **Push**: Uploads container layers to ECR registries (`docker push`).
-
----
-
-## Phase 5: Register Task Definitions & Create ECS Fargate Services (`scripts/create-services.sh`)
-
-Register task definitions specifying CPU/RAM allocations, Secrets Manager environment bindings, and launch active container tasks behind the Application Load Balancer.
+### 3. Custom AWS Region (`--region`):
+To deploy into an AWS region other than `us-east-1`:
 
 ```bash
-# 1. Register Task Definitions from JSON files
-aws ecs register-task-definition --cli-input-json file://../.github/workflows/task-definition-backend.json --region us-east-1
-aws ecs register-task-definition --cli-input-json file://../.github/workflows/task-definition-frontend.json --region us-east-1
-
-# 2. Launch ECS Fargate Services
-./create-services.sh
+./deploy-aws.sh --region eu-west-1
 ```
-
-### What `create-services.sh` Does Under the Hood:
-- Retrieves VPC Private Subnet IDs, Security Group IDs, and Target Group ARNs from CloudFormation outputs.
-- Executes `aws ecs create-service` for both backend and frontend:
-  ```bash
-  aws ecs create-service \
-      --cluster "rag-voice-agent-cluster" \
-      --service-name "rag-voice-agent-backend-service" \
-      --task-definition "rag-voice-agent-backend-td" \
-      --desired-count 1 \
-      --launch-type FARGATE \
-      --network-configuration "awsvpcConfiguration={subnets=[$PRIVATE_SUBNET_1,$PRIVATE_SUBNET_2],securityGroups=[$BACKEND_SG],assignPublicIp=DISABLED}" \
-      --load-balancers targetGroupArn=$BACKEND_TG_ARN,containerName=rag-voice-agent-backend-container,containerPort=8000
-  ```
 
 ---
 
-## Phase 6: Live Application Verification & Monitoring
+## Phase 3: Live Application Verification & Monitoring
 
-### 1. Verify Application Health:
-Open your browser and navigate to the ALB DNS Name:
-- **Web Interface**: `http://rag-voice-agent-alb-123456789.us-east-1.elb.amazonaws.com/`
-- **API Health Check**: `http://rag-voice-agent-alb-123456789.us-east-1.elb.amazonaws.com/health`
-- **OpenAPI Swagger Docs**: `http://rag-voice-agent-alb-123456789.us-east-1.elb.amazonaws.com/docs`
+### 1. Access Your Application:
+Once `./deploy-aws.sh` completes, it prints your live Application Load Balancer endpoints:
+- **Web Interface**: `http://<ALB-DNS-NAME>/`
+- **FastAPI Health Check**: `http://<ALB-DNS-NAME>/health`
+- **OpenAPI Swagger UI**: `http://<ALB-DNS-NAME>/docs`
 
 ### 2. Stream Live Logs via CloudWatch CLI:
-To watch live backend application logs (VAD turn-taking, STT transcripts, MongoDB vector search queries):
+To watch live backend application logs (turn-taking, STT transcripts, MongoDB vector search queries):
 
 ```bash
 aws logs tail /ecs/rag-voice-agent-backend --follow --region us-east-1
 ```
 
+To watch frontend Nginx access logs:
+```bash
+aws logs tail /ecs/rag-voice-agent-frontend --follow --region us-east-1
+```
+
 ---
 
-## Phase 7: GitHub Actions CI/CD Pipeline Integration
+## Phase 4: Automated CI/CD Pipeline (GitHub Actions)
 
-Automate zero-downtime container updates whenever code is pushed to your GitHub `main` branch.
+Continuous deployment is configured in [`.github/workflows/deploy.yml`](../.github/workflows/deploy.yml).
 
 ### 1. Configure GitHub Repository Secrets:
-Go to your GitHub Repository: **Settings ➔ Secrets and variables ➔ Actions ➔ New repository secret**.
+In your GitHub repository, navigate to:  
+**Settings ? Secrets and variables ? Actions ? New repository secret**
 
-Add the following 3 secrets:
+Add the following 3 repository secrets:
 
-| Secret Name | Value |
-| :--- | :--- |
-| **`AWS_ACCESS_KEY_ID`** | Your AWS Access Key ID |
-| **`AWS_SECRET_ACCESS_KEY`** | Your AWS Secret Access Key |
-| **`AWS_REGION`** | `us-east-1` |
+| Secret Name | Value | Description |
+| :--- | :--- | :--- |
+| **`AWS_ACCESS_KEY_ID`** | `AKIAIOSFODNN7EXAMPLE` | IAM access key with ECS/ECR permissions |
+| **`AWS_SECRET_ACCESS_KEY`** | `wJalrXUtnFEMI/K7MDENG/bPxRfi...` | IAM secret access key |
+| **`AWS_REGION`** | `us-east-1` | Target AWS region |
 
-### 2. Automated Trigger:
-Whenever you push code to GitHub:
+### 2. Triggering Automated Deployments:
+Pushing changes to the `main` branch automatically triggers zero-downtime deployment:
 ```bash
 git add .
-git commit -m "Enhance voice AI pipeline"
+git commit -m "Enhance voice agent RAG pipeline"
 git push origin main
 ```
-GitHub Actions workflow `.github/workflows/deploy.yml` will automatically:
-1. Authenticate against AWS & Amazon ECR.
-2. Build new backend & frontend Docker images tagged with `$GITHUB_SHA`.
-3. Push images to Amazon ECR.
-4. Render updated ECS Task Definition JSON files.
-5. Deploy updated task definitions to ECS Fargate with zero downtime.
 
-### 3. Manual Forced Deployment Refresh (Optional):
-If you need to force-refresh running ECS tasks manually via terminal:
-
-```bash
-cd /home/dell/voice-agent/scripts
-./deploy_aws.sh
-```
+The GitHub Actions workflow will:
+1. Dynamically detect your AWS Account ID via caller identity.
+2. Render task definition templates (`task-definition-backend.json.template` and `task-definition-frontend.json.template`).
+3. Build and push new Docker images tagged with `$GITHUB_SHA` to Amazon ECR.
+4. Deploy the updated task definitions to ECS Fargate with zero downtime.
 
 ---
 
-## Phase 8: Resource Destruction & Teardown (`infrastructure/destroy-aws.sh`)
+## Phase 5: Resource Teardown & Cleanup (`./destroy-aws.sh`)
 
-When you are done testing and want to stop all AWS billing charges:
+When you are done testing and want to stop all AWS billing charges (ALB, NAT Gateway, Fargate tasks):
 
 ```bash
-cd /home/dell/voice-agent/infrastructure
 ./destroy-aws.sh
 ```
 
-### What `destroy-aws.sh` Does:
-1. Prompts user for confirmation (`y/N`).
-2. Scales active ECS services down to 0 desired count and deletes services (`aws ecs delete-service`).
-3. Empties images from Amazon ECR repositories (`aws ecr batch-delete-image`).
-4. Deletes the CloudFormation Stack (`aws cloudformation delete-stack`).
+### What `./destroy-aws.sh` Does:
+1. Prompts for confirmation (`y/N`).
+2. Scales active ECS services down to 0 and deletes them (`rag-voice-agent-backend-service`, `rag-voice-agent-frontend-service`).
+3. Empties all Docker images from ECR repositories.
+4. Deletes the CloudFormation stack (releases ALB, NAT Gateway Elastic IP, VPC, and subnets).
 5. Optionally prompts to delete Secrets Manager secrets.
+
+To run non-interactively in automation:
+```bash
+./destroy-aws.sh --force
+```
 
 ---
 
-# 🔍 Troubleshooting & Gotchas
+# ?? Troubleshooting & Gotchas
 
-### 1. Missing ECS Service-Linked Role Error
-If `create-services.sh` fails with `Unable to assume role`, create the ECS Service-Linked Role in IAM:
+### 1. Browser Microphone Permissions on HTTP ALB URL
+Modern browsers (Chrome, Edge, Safari) restrict `navigator.mediaDevices.getUserMedia` microphone access to `https://` origins or `localhost`. If you access the application via the raw HTTP ALB URL (`http://rag-voice-agent-alb...`):
+- In Chrome or Edge, navigate to: `chrome://flags/#unsafely-treat-insecure-origin-as-secure`
+- Paste your ALB URL into the text box (e.g., `http://rag-voice-agent-alb-123456789.us-east-1.elb.amazonaws.com`).
+- Set the dropdown to **Enabled** and click **Relaunch**.
+- The browser will now allow microphone access for real-time voice conversations.
+
+*(In a production domain setup, attach an ACM SSL Certificate to the ALB on port 443 for automatic HTTPS).*
+
+### 2. ECS Service-Linked Role
+If you see an error like `Unable to assume role` or `ServiceLinkedRole` during service creation in a brand-new AWS account, `./deploy-aws.sh` creates it automatically:
 ```bash
 aws iam create-service-linked-role --aws-service-name ecs.amazonaws.com
 ```
 
-### 2. Browser Microphone Permissions on HTTP ALB URL
-Browsers restrict `navigator.mediaDevices.getUserMedia` mic access to `https://` or `localhost`. If accessing via raw `http://rag-voice-agent-alb...`:
-- In Chrome / Edge, navigate to `chrome://flags/#unsafely-treat-insecure-origin-as-secure`.
-- Add your ALB URL (`http://rag-voice-agent-alb-123456789.us-east-1.elb.amazonaws.com`) to the text box, select **Enabled**, and relaunch the browser.
-
-### 3. AWS CLI Terminal Pager (`:`) Prompt
+### 3. AWS CLI Terminal Pager (`:`) Freeze
 If running `aws` commands freezes your terminal with a colon `:` prompt:
-- Press `q` on your keyboard to exit the pager.
-- Or disable pagers globally by adding `export AWS_PAGER=""` to your `~/.bashrc` file.
+- Press `q` to exit the pager.
+- Or disable pagers permanently by running:
+  ```bash
+  echo 'export AWS_PAGER=""' >> ~/.bashrc
+  source ~/.bashrc
+  ```
