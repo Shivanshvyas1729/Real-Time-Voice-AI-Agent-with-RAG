@@ -3,30 +3,115 @@
 @tailwind utilities;
 
 :root {
-  font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   line-height: 1.5;
   font-weight: 400;
-
-  color-scheme: light dark;
-  color: rgba(255, 255, 255, 0.87);
-  background-color: #242424;
-
+  color-scheme: light;
+  color: #0f172a;
+  background-color: #ffffff;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
+html.dark, :root.dark {
+  color-scheme: dark;
+  background-color: #0b0f19;
+  color: #f1f5f9;
+}
+
 body {
   margin: 0;
-  display: flex;
-  place-items: center;
-  min-width: 320px;
-  min-height: 100vh;
+  padding: 0;
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+  background-color: #ffffff;
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+body.dark {
+  background-color: #0b0f19;
+  color: #f1f5f9;
 }
 
 #root {
   width: 100%;
-  height: 100vh;
+  height: 100%;
 }
 
+/* Custom Scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.3);
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(148, 163, 184, 0.5);
+}
+
+.dark ::-webkit-scrollbar-thumb {
+  background: rgba(51, 65, 85, 0.6);
+}
+
+.dark ::-webkit-scrollbar-thumb:hover {
+  background: rgba(71, 85, 105, 0.8);
+}
+
+/* Animated Equalizer Waveform Keyframes */
+@keyframes eq-bounce-1 {
+  0%, 100% { height: 6px; }
+  50% { height: 32px; }
+}
+
+@keyframes eq-bounce-2 {
+  0%, 100% { height: 10px; }
+  50% { height: 46px; }
+}
+
+@keyframes eq-bounce-3 {
+  0%, 100% { height: 4px; }
+  50% { height: 26px; }
+}
+
+@keyframes eq-bounce-4 {
+  0%, 100% { height: 8px; }
+  50% { height: 38px; }
+}
+
+.animate-eq-1 {
+  animation: eq-bounce-1 0.75s ease-in-out infinite;
+}
+
+.animate-eq-2 {
+  animation: eq-bounce-2 0.6s ease-in-out infinite 0.15s;
+}
+
+.animate-eq-3 {
+  animation: eq-bounce-3 0.85s ease-in-out infinite 0.3s;
+}
+
+.animate-eq-4 {
+  animation: eq-bounce-4 0.65s ease-in-out infinite 0.1s;
+}
+
+/* Acoustic Ripple Effect */
+@keyframes audio-ripple {
+  0% { transform: scale(0.9); opacity: 0.8; }
+  50% { transform: scale(1.15); opacity: 0.3; }
+  100% { transform: scale(0.9); opacity: 0.8; }
+}
+
+.animate-audio-ripple {
+  animation: audio-ripple 1.8s ease-in-out infinite;
+}

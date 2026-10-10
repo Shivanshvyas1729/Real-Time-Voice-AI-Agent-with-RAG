@@ -52,7 +52,7 @@ export default function AdminModal({
   // Equipment state
   const [eqName, setEqName] = useState("");
   const [eqDesc, setEqDesc] = useState("");
-  const [eqTenantId, setEqTenantId] = useState("");
+  const [eqTenantId, setEqTenantId] = useState("mvp_tenant");
   const [eqSubmitting, setEqSubmitting] = useState(false);
   const [eqMsg, setEqMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
@@ -70,8 +70,10 @@ export default function AdminModal({
     try {
       const data = await getTenants();
       setTenants(data);
-      if (data.length > 0 && !eqTenantId) {
-        setEqTenantId(data[0].tenant_id);
+      if (data.length > 0) {
+        setEqTenantId((prev) => (prev && data.some((t) => t.tenant_id === prev) ? prev : data[0].tenant_id));
+      } else {
+        setEqTenantId("mvp_tenant");
       }
     } catch (err: any) {
       console.error("Failed to load tenants:", err);
@@ -159,7 +161,7 @@ export default function AdminModal({
 
     const name = eqName.trim();
     const desc = eqDesc.trim();
-    const tenant = eqTenantId.trim();
+    const tenant = (eqTenantId || "mvp_tenant").trim();
 
     if (!name || !desc) {
       setEqMsg({ type: "error", text: "Equipment name and description are required." });

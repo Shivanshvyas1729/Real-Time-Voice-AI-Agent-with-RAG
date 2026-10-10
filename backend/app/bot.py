@@ -1,15 +1,16 @@
 """
 Pipecat Voice Bot Pipeline Engine Module
 
-Constructs and executes the real-time AI voice pipeline using Pipecat 1.0 architecture:
+Constructs and executes the real-time AI voice pipeline following Pipecat's
+official architecture:
 - Deepgram Speech-To-Text (STT)
+- Universal LLM Context Aggregators with Silero VAD Analyzer
 - Groq Language Model (LLM) with RAG tool calling (`search_knowledge_base`)
-- ElevenLabs Text-To-Speech (TTS)
-- RTVI Protocol Observer & FastAPI WebSocket Transport
+- ElevenLabs Text-To-Speech (TTS) using eleven_turbo_v2_5
+- RTVI Protocol Observer & WebRTC/WebSocket Transport
 """
 
 import os
-from datetime import datetime, timezone
 from typing import Any, Dict
 from dotenv import load_dotenv
 from loguru import logger
@@ -17,20 +18,15 @@ from fastapi import WebSocket
 
 from pipecat.audio.vad.silero import SileroVADAnalyzer, VADParams
 from pipecat.adapters.schemas.tools_schema import FunctionSchema, ToolsSchema
-from pipecat.frames.frames import (
-    Frame,
-    LLMMessagesAppendFrame,
-    LLMRunFrame,
-    TranscriptionFrame,
-)
+from pipecat.frames.frames import LLMRunFrame
 from pipecat.pipeline.pipeline import Pipeline
 from pipecat.pipeline.runner import PipelineRunner
 from pipecat.pipeline.task import PipelineParams, PipelineTask
 from pipecat.processors.aggregators.llm_context import LLMContext
 from pipecat.processors.aggregators.llm_response_universal import (
     LLMContextAggregatorPair,
+    LLMUserAggregatorParams,
 )
-from pipecat.processors.frame_processor import FrameDirection, FrameProcessor
 from pipecat.processors.frameworks.rtvi import (
     RTVIObserver,
     RTVIProcessor,
@@ -47,40 +43,11 @@ from pipecat.transports.websocket.fastapi import (
     FastAPIWebsocketTransport,
 )
 
+from groq import AsyncGroq
 from app.config import settings
 from app.services.rag import RAGService
 
 load_dotenv(override=True)
-
-
-class TextCaptureProcessor(FrameProcessor):
-    """
-    FrameProcessor that intercepts user LLMMessagesAppendFrame events and emits TranscriptionFrames downstream.
-
-    Input:
-        frame (Frame): Incoming audio/text frame in the pipeline.
-        direction (FrameDirection): Flow direction (downstream/upstream).
-
-    Output:
-        Pushes a new `TranscriptionFrame` downstream if a user message is detected,
-        then forwards the original `frame` unchanged so context aggregators receive it.
-    """
-
-    async def process_frame(self, frame: Frame, direction: FrameDirection):
-        await super().process_frame(frame, direction)
-
-        if isinstance(frame, LLMMessagesAppendFrame):
-            for message in frame.messages:
-                if message.get("role") == "user":
-                    await self.push_frame(
-                        TranscriptionFrame(
-                            text=message.get("content", ""),
-                            user_id="user",
-                            timestamp=datetime.now(timezone.utc).isoformat(),
-                        )
-                    )
-
-        await self.push_frame(frame, direction)
 
 
 async def run_bot(transport: BaseTransport, session_data: Dict[str, Any]):
@@ -88,7 +55,7 @@ async def run_bot(transport: BaseTransport, session_data: Dict[str, Any]):
     Constructs and runs the full Pipecat pipeline for a voice/text streaming session.
 
     Input:
-        transport (BaseTransport): Inbound transport instance (FastAPIWebsocketTransport).
+        transport (BaseTransport): Inbound transport instance (SmallWebRTCTransport or FastAPIWebsocketTransport).
         session_data (Dict[str, Any]): Session context dictionary containing:
             - `equipment_id` (str): Target equipment ID.
             - `tenant_id` (str): Multi-tenant isolation ID.
@@ -97,23 +64,80 @@ async def run_bot(transport: BaseTransport, session_data: Dict[str, Any]):
     Output:
         Runs `PipelineRunner` until socket disconnects or pipeline finishes.
     """
-    logger.info("Starting voice bot pipeline...")
+    logger.info("Starting voice bot pipeline (Pipecat Architecture)...")
 
     equipment_id: str = session_data.get("equipment_id", "")
     tenant_id: str = session_data.get("tenant_id", settings.TENANT_ID)
+    equipment_name: str = session_data.get("equipment_name", "")
+    equipment_desc: str = session_data.get("equipment_description", "")
 
     rag_service = RAGService()
+    groq_async_client = AsyncGroq(api_key=os.getenv("GROQ_API_KEY"))
+
+    # Fallback: if equipment info wasn't in session_data, safely query MongoDB
+    if not equipment_name and equipment_id:
+        try:
+            from app.database import get_database
+            from bson import ObjectId
+            db = get_database()
+            if db is not None and ObjectId.is_valid(equipment_id):
+                eq_doc = await db.equipment.find_one({"_id": ObjectId(equipment_id)})
+                if eq_doc:
+                    equipment_name = eq_doc.get("name", "")
+                    equipment_desc = eq_doc.get("description", "")
+        except Exception:
+            pass
+
+    async def enhance_query_with_llm(raw_query: str) -> str:
+        """
+        LLM-based Search Query Enhancer:
+        Rewrites conversational or fragmented queries into rich semantic search queries
+        specifically optimized for MongoDB Atlas Vector Store ($vectorSearch with BGE-M3 1024-dim embeddings).
+        ONLY invoked when the LLM triggers search_knowledge_base.
+        """
+        if not raw_query or not raw_query.strip():
+            return ""
+
+        try:
+            res = await groq_async_client.chat.completions.create(
+                model="qwen/qwen3.8-27b",
+                messages=[
+                    {
+                        "role": "system",
+                        "content": (
+                            "You are a technical search query optimizer for a MongoDB vector database containing industrial equipment manuals. "
+                            "Rewrite the raw query into an optimal, highly specific search query (8 to 18 words) containing component names, "
+                            "technical parameters, fault codes, or subsystem terms for dense vector embedding search. "
+                            "Output ONLY the enhanced query string. Do NOT add preamble, quotes, or punctuation."
+                        ),
+                    },
+                    {
+                        "role": "user",
+                        "content": f"Equipment: {equipment_name}\nDescription: {equipment_desc}\nRaw query: {raw_query}\nEnhanced search query:",
+                    },
+                ],
+                max_tokens=50,
+                temperature=0.0,
+            )
+            enhanced = res.choices[0].message.content.strip().strip('"').strip("'")
+            return enhanced or raw_query
+        except Exception as err:
+            logger.warning(f"LLM query enhancement failed, using raw query: {err}")
+            return raw_query
+
+    search_count = 0
 
     # 1. STT Service Setup (Deepgram Live Transcriber)
-    live_options = LiveOptions(
-        model="nova-3",
-        language="en",
-        punctuate=True,
-        # diarize=True       # ❌ REMOVED: Do NOT use speaker separation in 1-on-1 voice bot
-    )
     stt = DeepgramSTTService(
         api_key=os.getenv("DEEPGRAM_API_KEY"),
-        live_options=live_options,
+        live_options=LiveOptions(
+            model="nova-3",
+            language="en-US",
+            smart_format=True,
+            punctuate=True,
+            # interim_results and vad_events use Pipecat DeepgramSTTService defaults (True).
+            # endpointing and utterance_end_ms intentionally omitted: Silero VAD controls turn-taking.
+        ),
     )
 
     # 2. RTVI Processor (Pipecat RTVI Protocol Manager)
@@ -123,20 +147,26 @@ async def run_bot(transport: BaseTransport, session_data: Dict[str, Any]):
     async def search_knowledge_base(params: FunctionCallParams):
         """
         Tool Callback: Invoked by Groq LLM when looking up technical equipment manuals.
-
-        Input:
-            params (FunctionCallParams): Contains `arguments["query"]` search string.
-
-        Output:
-            Executes `rag_service.retrieve()`, invokes `params.result_callback()` with chunks,
-            and emits an `RTVIServerMessageFrame` for UI citations rendering.
         """
+        nonlocal search_count
         try:
-            query = params.arguments.get("query", "")
-            logger.info(f"RAG search: {query!r}")
+            # Enforce hard limit of 3 searches per turn to prevent excessive latency loops
+            if search_count >= 3:
+                logger.warning(f"RAG search cap reached ({search_count}/3). Stopping query loop.")
+                await params.result_callback({
+                    "results": [],
+                    "notice": "Maximum 3 searches reached for this question. Synthesize the final answer using retrieved documents.",
+                })
+                return
+            search_count += 1
+
+            raw_query = params.arguments.get("query", "")
+            # Apply LLM-based query enhancement for MongoDB Vector Store
+            enhanced_query = await enhance_query_with_llm(raw_query)
+            logger.info(f"RAG search: raw={raw_query!r} -> LLM enhanced={enhanced_query!r}")
 
             retrieval_result = await rag_service.retrieve(
-                query=query,
+                query=enhanced_query,
                 k=3,
                 equipment_id=equipment_id,
                 tenant_id=tenant_id,
@@ -152,10 +182,12 @@ async def run_bot(transport: BaseTransport, session_data: Dict[str, Any]):
 
             await params.result_callback({"results": clean_data})
 
+            # Send the real LLM-enhanced query to UI Accordion
             await rtvi.push_frame(
                 RTVIServerMessageFrame(
                     data={
                         "type": "search_knowledge_base",
+                        "query": enhanced_query,
                         "chunks": [
                             {
                                 "id": meta.chunk_id,
@@ -176,8 +208,22 @@ async def run_bot(transport: BaseTransport, session_data: Dict[str, Any]):
 
     search_tool = FunctionSchema(
         name="search_knowledge_base",
-        description="Search the knowledge base for relevant information",
-        properties={"query": {"type": "string"}},
+        description=(
+            "Search MongoDB vector knowledge base for equipment technical manuals, "
+            "specifications, fault codes, tag identifiers, and maintenance procedures."
+        ),
+        properties={
+            "query": {
+                "type": "string",
+                "description": (
+                    "A rich, technical search query formulated for MongoDB Vector Search embedding. "
+                    "Include the specific component name, parameter name, error code, or subsystem "
+                    "(e.g., 'VFD acceleration ramp up profile seconds parameter', "
+                    "'hydraulic suction isolation valve tag identifier'). "
+                    "Never use conversational fragments like 'configured for' or single isolated words."
+                ),
+            }
+        },
         required=["query"],
     )
 
@@ -193,40 +239,53 @@ async def run_bot(transport: BaseTransport, session_data: Dict[str, Any]):
         cancel_on_interruption=False,
     )
 
-    # 5. System Prompt, Universal Context & Aggregator Pair
+    # 5. System Prompt, Universal Context & Aggregator Pair (Pipecat Standard)
     messages = [
         {
             "role": "system",
             "content": (
-                "You are an AI equipment diagnostic assistant. "
-                "You have access to the tool `search_knowledge_base`. "
-                "ALWAYS call the `search_knowledge_base` tool whenever answering user questions about equipment, manuals, error codes, procedures, or technical specifications. "
-                "Base your answers on the retrieved knowledge base data. Keep responses concise, clear, and under 30 words."
+                f"You are an AI equipment diagnostic assistant for: '{equipment_name or 'Industrial Equipment'}'. "
+                f"{f'Description: {equipment_desc}. ' if equipment_desc else ''}"
+                "You have access to the tool `search_knowledge_base` which queries the MongoDB vector store for technical documentation.\n"
+                "SEARCH RULES:\n"
+                "1. Always formulate detailed, technical search queries containing specific component names, parameter terms, or error codes (e.g., 'VFD acceleration ramp up profile seconds configuration', 'hydraulic suction isolation valve tag identifier').\n"
+                "2. NEVER search short fragments like 'configured for' or conversational filler words.\n"
+                "3. Perform at most 1 to 2 targeted searches per user question. Synthesize your final answer from the retrieved results.\n"
+                "4. Do NOT call the tool for greetings, polite pleasantries, or general non-equipment conversation.\n"
+                "5. Base your answers strictly on retrieved documentation. Keep spoken responses concise and under 40 words."
             ),
         },
     ]
 
-    context = LLMContext(messages, tools=ToolsSchema(standard_tools=[search_tool]))
-    user_aggregator, assistant_aggregator = LLMContextAggregatorPair(context)
 
-    # 6. TTS Service Setup (ElevenLabs Synthesizer)
-    # Model options (set ELEVENLABS_MODEL env var or change the default below):
-    #   eleven_flash_v2_5        - Ultra-low latency ~75ms  [CURRENT - recommended for real-time voice agents]
-    #   eleven_v3_conversational - Most expressive realtime ~280ms
-    #   eleven_multilingual_v2  - Highest quality, ~300ms latency, 29 languages
-    #   eleven_v3               - Most emotionally rich, not real-time optimized
-    # See full model list: https://elevenlabs.io/docs/overview/models
-    tts = ElevenLabsTTSService(
-        api_key=os.getenv("ELEVENLABS_API_KEY", ""),
-        voice_id=os.getenv("ELEVENLABS_VOICE_ID", "pNInz6obpgDQGcFmaJgB"),
-        model=os.getenv("ELEVENLABS_MODEL", "eleven_flash_v2_5"),
+    context = LLMContext(messages, tools=ToolsSchema(standard_tools=[search_tool]))
+    user_aggregator, assistant_aggregator = LLMContextAggregatorPair(
+        context,
+        user_params=LLMUserAggregatorParams(
+            vad_analyzer=SileroVADAnalyzer(
+                params=VADParams(
+                    confidence=0.85,
+                    start_secs=0.35,
+                    stop_secs=0.4,
+                )
+            ),
+        ),
     )
 
-    # 7. Construct Pipecat Pipeline
+    # 6. TTS Service Setup (ElevenLabs Synthesizer - Pipecat Standard)
+    # Uses eleven_turbo_v2_5 for fluent, uninterrupted speech without dropped words or phantom pauses.
+    tts = ElevenLabsTTSService(
+        api_key=os.getenv("ELEVENLABS_API_KEY", ""),
+        settings=ElevenLabsTTSService.Settings(
+            voice=os.getenv("ELEVENLABS_VOICE_ID", "pNInz6obpgDQGcFmaJgB"),
+            model=os.getenv("ELEVENLABS_MODEL", "eleven_turbo_v2_5"),
+        ),
+        stop_frame_timeout_s=10.0,
+    )
+
+    # 7. Construct Pipecat Pipeline (Clean Pipecat Architecture)
     pipeline = Pipeline([
         transport.input(),
-        rtvi,
-        TextCaptureProcessor(),
         stt,
         user_aggregator,
         llm,
@@ -235,14 +294,14 @@ async def run_bot(transport: BaseTransport, session_data: Dict[str, Any]):
         assistant_aggregator,
     ])
 
-    # 8. PipelineTask
+    # 8. PipelineTask with Metrics & RTVI Observer (Pipecat Standard)
     task = PipelineTask(
         pipeline,
         params=PipelineParams(
             enable_metrics=True,
             enable_usage_metrics=True,
         ),
-        observers=[RTVIObserver(rtvi)],
+        rtvi_processor=rtvi,
     )
 
     # 9. Lifecycle Event Handlers
@@ -258,6 +317,7 @@ async def run_bot(transport: BaseTransport, session_data: Dict[str, Any]):
 
     @transport.event_handler("on_client_disconnected")
     async def on_client_disconnected(trans, client):
+        logger.info("Client disconnected")
         await task.cancel()
 
     # 10. PipelineRunner Execution
@@ -267,15 +327,7 @@ async def run_bot(transport: BaseTransport, session_data: Dict[str, Any]):
 
 async def bot(websocket: WebSocket, session_data: Dict[str, Any]):
     """
-    WebSocket Bot Handler Entrypoint.
-
-    Input:
-        websocket (WebSocket): Inbound FastAPI WebSocket connection.
-        session_data (Dict[str, Any]): Session context containing equipment_id, tenant_id, user_id.
-
-    Output:
-        Initializes `FastAPIWebsocketTransport` with Silero VAD analyzer and Protobuf serializer,
-        then delegates to `run_bot()`.
+    WebSocket Bot Handler Entrypoint (Fallback).
     """
     transport = FastAPIWebsocketTransport(
         websocket=websocket,
@@ -284,7 +336,6 @@ async def bot(websocket: WebSocket, session_data: Dict[str, Any]):
             audio_out_enabled=True,
             add_wav_header=False,
             serializer=ProtobufFrameSerializer(),
-            vad_analyzer=SileroVADAnalyzer(params=VADParams(stop_secs=0.2)),
         ),
     )
 

@@ -2,6 +2,7 @@ import { ChunkMetadata } from "./Chunk";
 
 export type ServerMessage = {
   type: string;
+  query?: string;
   chunks?: Array<{
     id: string;
     text: string;
@@ -9,4 +10,3 @@ export type ServerMessage = {
   }>;
   data?: any;
 };
-

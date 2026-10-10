@@ -1,69 +1,71 @@
-import { PipecatClient } from '@pipecat-ai/client-js';
-import { PipecatClientProvider, usePipecatClientTransportState } from '@pipecat-ai/client-react';
-import { WebSocketTransport } from '@pipecat-ai/websocket-transport';
-import { useState, useEffect } from 'react';
-import RealTimeChatPanel from '@/components/RealTimeChatPanel';
-import { TransportStateEnum } from "@pipecat-ai/client-js";
+import { PipecatClient } from "@pipecat-ai/client-js";
+import {
+  PipecatClientProvider,
+  PipecatClientAudio,
+} from "@pipecat-ai/client-react";
+import { WebSocketTransport } from "@pipecat-ai/websocket-transport";
+import { SmallWebRTCTransport } from "@pipecat-ai/small-webrtc-transport";
+import { useState, useEffect, useMemo } from "react";
+import RealTimeChatPanel from "@/components/RealTimeChatPanel";
 
 const Stream = () => {
   const [equipmentId, setEquipmentId] = useState<string | undefined>(undefined);
-  const transportState = usePipecatClientTransportState();
-  const [client] = useState(() => {
+  const [transportType, setTransportType] = useState<"webrtc" | "websocket">("webrtc");
+
+  const client = useMemo(() => {
     try {
-      const transport = new WebSocketTransport();
-      // Silence unsupported getters in WebSocketTransport
-      Object.defineProperty(transport, 'isCamEnabled', { get: () => false, configurable: true });
-      Object.defineProperty(transport, 'isSharingScreen', { get: () => false, configurable: true });
-      return new PipecatClient({ transport, enableMic: true });
+      const transport =
+        transportType === "webrtc"
+          ? new SmallWebRTCTransport()
+          : new WebSocketTransport();
+      Object.defineProperty(transport, "isCamEnabled", { get: () => false, configurable: true });
+      Object.defineProperty(transport, "isSharingScreen", { get: () => false, configurable: true });
+      return new PipecatClient({ transport, enableMic: true, enableCam: false });
     } catch (error) {
       console.error("Error initializing PipecatClient:", error);
-      const transport = new WebSocketTransport();
-      Object.defineProperty(transport, 'isCamEnabled', { get: () => false, configurable: true });
-      Object.defineProperty(transport, 'isSharingScreen', { get: () => false, configurable: true });
-      return new PipecatClient({ transport, enableMic: true });
+      const transport = new SmallWebRTCTransport();
+      Object.defineProperty(transport, "isCamEnabled", { get: () => false, configurable: true });
+      Object.defineProperty(transport, "isSharingScreen", { get: () => false, configurable: true });
+      return new PipecatClient({ transport, enableMic: true, enableCam: false });
     }
-  });
+  }, [transportType]);
 
-  // Log transport state changes at the Stream level
-  useEffect(() => {
-    console.log("[Stream] Transport state:", transportState);
-  }, [transportState]);
-
-  // Global error handler for unhandled promise rejections (like enumerateDevices)
   useEffect(() => {
     const handleUnhandledRejection = (event: PromiseRejectionEvent) => {
-      // Suppress enumerateDevices errors - they're expected when not using HTTPS or microphone not available
-      if (event.reason?.message?.includes?.('enumerateDevices') ||
-        event.reason?.toString?.()?.includes?.('enumerateDevices') ||
-        event.reason?.stack?.includes?.('enumerateDevices')) {
-        console.warn("⚠️ Microphone access error (expected if not using HTTPS):", event.reason);
-        event.preventDefault(); // Prevent error from showing in console
+      if (
+        event.reason?.message?.includes?.("enumerateDevices") ||
+        event.reason?.toString?.()?.includes?.("enumerateDevices") ||
+        event.reason?.stack?.includes?.("enumerateDevices")
+      ) {
+        console.warn("Microphone access notice:", event.reason);
+        event.preventDefault();
         return;
       }
-      // Log other unhandled rejections
       console.error("Unhandled promise rejection:", event.reason);
     };
 
-    window.addEventListener('unhandledrejection', handleUnhandledRejection);
+    window.addEventListener("unhandledrejection", handleUnhandledRejection);
     return () => {
-      window.removeEventListener('unhandledrejection', handleUnhandledRejection);
+      window.removeEventListener("unhandledrejection", handleUnhandledRejection);
     };
   }, []);
 
   useEffect(() => {
     return () => {
-      if (transportState === TransportStateEnum.CONNECTED) {
-        client?.disconnect();
-      }
+      client?.disconnect();
     };
-  }, [client, transportState]);
+  }, [client]);
 
   return (
     <PipecatClientProvider client={client}>
-      <div className="h-full w-full bg-white">
+      {/* Native WebRTC Hardware Audio Output Element */}
+      <PipecatClientAudio />
+      <div className="h-screen w-screen bg-white dark:bg-[#0b0f19] overflow-hidden">
         <RealTimeChatPanel
           equipmentId={equipmentId}
           onEquipmentChange={setEquipmentId}
+          transportType={transportType}
+          onTransportChange={setTransportType}
         />
       </div>
     </PipecatClientProvider>
@@ -71,4 +73,3 @@ const Stream = () => {
 };
 
 export default Stream;
-

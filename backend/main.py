@@ -107,6 +107,8 @@ app.add_middleware(
 
 app.include_router(equipment.router, prefix="/api/v1/equipment", tags=["Equipment"])
 app.include_router(stream.router, prefix="/api/v1/stream", tags=["Stream"])
+app.include_router(stream.router, prefix="/api", tags=["Pipecat SmallWebRTC /api Aliases"])  # Handles /api/offer
+app.include_router(stream.router, tags=["Stream Root Aliases"])  # Direct /offer and /start aliases
 app.include_router(tenants.router, prefix="/api/v1/tenants", tags=["Tenants"])
 
 @app.get("/")
